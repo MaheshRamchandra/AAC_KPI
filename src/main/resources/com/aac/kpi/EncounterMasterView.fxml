@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aac.kpi.controller.EncounterMasterController">
+    <top>
+        <HBox spacing="8" styleClass="toolbar">
+            <children>
+                <Button text="Generate Encounters" onAction="#onGenerate" />
+                <Button text="Upload Existing Excel" onAction="#onUploadExcel" />
+                <Button text="Analyze" onAction="#onAnalyze" />
+                <Button text="Save / Export" onAction="#onExport" />
+                <Button text="Clear Sheet" onAction="#onClearSheet" />
+                <Button text="Clear All Sheets" onAction="#onClearAll" />
+            </children>
+        </HBox>
+    </top>
+    <center>
+        <TableView fx:id="table" prefHeight="600.0">
+            <columns>
+                <TableColumn fx:id="cId" text="encounter_id" prefWidth="300" />
+                <TableColumn fx:id="cStatus" text="encounter_status" prefWidth="120" />
+                <TableColumn fx:id="cDisplay" text="encounter_display" prefWidth="160" />
+                <TableColumn fx:id="cStart" text="encounter_start" prefWidth="240" />
+                <TableColumn fx:id="cPurpose" text="encounter_purpose" prefWidth="300" />
+                <TableColumn fx:id="cStaff" text="encounter_contactedstaffname" prefWidth="180" />
+                <TableColumn fx:id="cRef" text="encounter_referredby" prefWidth="160" />
+                <TableColumn fx:id="cPatientRef" text="encounter_patient_reference" prefWidth="240" />
+            </columns>
+        </TableView>
+    </center>
+</BorderPane>

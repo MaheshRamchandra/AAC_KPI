@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aac.kpi.controller.JsonCsvController">
+    <top>
+        <VBox spacing="8">
+            <padding>
+                <Insets top="8" bottom="8" left="8" right="8"/>
+            </padding>
+            <children>
+                <GridPane hgap="8" vgap="8">
+                    <columnConstraints>
+                        <ColumnConstraints halignment="RIGHT" minWidth="120" />
+                        <ColumnConstraints hgrow="ALWAYS" />
+                        <ColumnConstraints halignment="RIGHT" minWidth="90" />
+                    </columnConstraints>
+                    <rowConstraints>
+                        <RowConstraints minHeight="30" />
+                        <RowConstraints minHeight="30" />
+                    </rowConstraints>
+                    <children>
+                        <Label text="JSON folders" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+                        <TextField fx:id="tfInputDir" promptText="Path to generated JSON folders" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+                        <Button text="Browse" onAction="#onBrowseInput" GridPane.rowIndex="0" GridPane.columnIndex="2" />
+
+                        <Label text="CSV output" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+                        <TextField fx:id="tfOutputDir" promptText="Where to place CSV files" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+                        <Button text="Browse" onAction="#onBrowseOutput" GridPane.rowIndex="1" GridPane.columnIndex="2" />
+                    </children>
+                </GridPane>
+                <HBox spacing="8" alignment="CENTER_RIGHT">
+                    <Button text="Convert JSON → CSV" onAction="#onConvert" />
+                    <Button text="Fix AAC CSV" onAction="#onFixAacCsv" />
+                    <Button text="Clear Log" onAction="#onClearLog" />
+                </HBox>
+            </children>
+        </VBox>
+    </top>
+    <center>
+        <TextArea fx:id="taLog" editable="false" wrapText="true" />
+    </center>
+</BorderPane>

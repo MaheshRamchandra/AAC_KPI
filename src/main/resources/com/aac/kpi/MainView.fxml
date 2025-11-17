@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aac.kpi.MainController" stylesheets="@style.css">
+    <top>
+        <MenuBar>
+            <menus>
+                <Menu text="File">
+                    <items>
+                        <MenuItem text="Upload Excel" onAction="#onUploadExcel" />
+                        <MenuItem text="Save" onAction="#onSaveExcel" />
+                        <MenuItem text="Save As…" onAction="#onExportExcelAs" />
+                        <SeparatorMenuItem />
+                        <MenuItem text="Exit" onAction="#onExit" />
+                    </items>
+                </Menu>
+                <Menu text="Settings">
+                    <items>
+                        <MenuItem text="KPI Settings" onAction="#onOpenKpiSettings" />
+                    </items>
+                </Menu>
+            </menus>
+        </MenuBar>
+    </top>
+    <center>
+        <TabPane fx:id="tabPane">
+            <tabs>
+                <Tab fx:id="patientTab" text="Patient Master" closable="false" />
+                <Tab fx:id="eventTab" text="Event Session" closable="false" />
+                <Tab fx:id="practitionerTab" text="Practitioner Master" closable="false" />
+                <Tab fx:id="encounterTab" text="Encounter Master" closable="false" />
+                <Tab fx:id="questionnaireTab" text="QuestionnaireResponse Master" closable="false" />
+                <Tab fx:id="commonTab" text="Common" closable="false" />
+                <Tab fx:id="jsonTab" text="KPI JSON" closable="false" />
+                <Tab fx:id="jsonCsvTab" text="JSON → CSV" closable="false" />
+                <Tab fx:id="userGuideTab" text="User Guide" closable="false" />
+                <Tab fx:id="masterDataTab" text="Master Data" closable="false" />
+            </tabs>
+        </TabPane>
+    </center>
+    <bottom>
+        <HBox styleClass="status-bar">
+            <children>
+                <Label fx:id="statusLabel" text="Generated 0 patients | 0 sessions | Last export: " />
+            </children>
+        </HBox>
+    </bottom>
+</BorderPane>

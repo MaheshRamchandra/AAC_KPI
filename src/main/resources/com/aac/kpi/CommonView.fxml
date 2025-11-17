@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aac.kpi.controller.CommonController">
+    <top>
+        <HBox spacing="8" styleClass="toolbar">
+            <children>
+                <Button text="Build Common" onAction="#onBuild" />
+                <Button text="Upload Existing Excel" onAction="#onUploadExcel" />
+                <Button text="Analyze" onAction="#onAnalyze" />
+                <Button text="Save / Export" onAction="#onExport" />
+                <Button text="Clear Sheet" onAction="#onClearSheet" />
+                <Button text="Clear All Sheets" onAction="#onClearAll" />
+            </children>
+        </HBox>
+    </top>
+    <center>
+        <TableView fx:id="table" prefHeight="600.0">
+            <columns>
+                <TableColumn fx:id="cComp" text="composition_id" prefWidth="220" />
+                <TableColumn fx:id="cVersion" text="version_id" prefWidth="100" />
+                <TableColumn fx:id="cUpdated" text="last_updated" prefWidth="160" />
+                <TableColumn fx:id="cMeta" text="meta_code" prefWidth="140" />
+                <TableColumn fx:id="cMonth" text="reporting_month" prefWidth="120" />
+                <TableColumn fx:id="cDays" text="total_operating_days" prefWidth="120" />
+                <TableColumn fx:id="cClients" text="total_clients" prefWidth="120" />
+                <TableColumn fx:id="cStatus" text="status" prefWidth="100" />
+                <TableColumn fx:id="cAuthorVal" text="author_value" prefWidth="220" />
+                <TableColumn fx:id="cAuthorDisp" text="author_display" prefWidth="200" />
+                <TableColumn fx:id="cPatientRef" text="patient_reference" prefWidth="240" />
+                <TableColumn fx:id="cEncRefs" text="encounter_references" prefWidth="260" />
+                <TableColumn fx:id="cQuestRef" text="questionnaire_reference" prefWidth="220" />
+                <TableColumn fx:id="cAttendRefs" text="attended_event_references" prefWidth="260" />
+            </columns>
+        </TableView>
+    </center>
+</BorderPane>

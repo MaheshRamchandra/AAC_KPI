@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aac.kpi.controller.EventSessionController">
+    <top>
+        <HBox spacing="8" styleClass="toolbar">
+            <children>
+                <Button text="Generate Event Sessions" onAction="#onGenerateSessions" />
+                <Button text="Upload Existing Excel" onAction="#onUploadExcel" />
+                <Button text="Analyze" onAction="#onAnalyze" />
+                <Button text="Clear Sheet" onAction="#onClearSheet" />
+                <Button text="Clear All Sheets" onAction="#onClearAll" />
+            </children>
+        </HBox>
+    </top>
+    <center>
+        <TableView fx:id="table" prefHeight="600.0">
+            <columns>
+                <TableColumn fx:id="cCompId" text="composition_id" prefWidth="200" />
+                <TableColumn fx:id="cNum" text="number_of_event_sessions" prefWidth="180" />
+                <TableColumn fx:id="cESId" text="event_session_id1" prefWidth="160" />
+                <TableColumn fx:id="cMode" text="event_session_mode1" prefWidth="140" />
+                <TableColumn fx:id="cStart" text="event_session_start_date1" prefWidth="200" />
+                <TableColumn fx:id="cEnd" text="event_session_end_date1" prefWidth="200" />
+                <TableColumn fx:id="cDur" text="event_session_duration1" prefWidth="160" />
+                <TableColumn fx:id="cVenue" text="event_session_venue1" prefWidth="160" />
+                <TableColumn fx:id="cCap" text="event_session_capacity1" prefWidth="160" />
+                <TableColumn fx:id="cPatientRef" text="event_session_patient_references1" prefWidth="260" />
+                <TableColumn fx:id="cAttended" text="attended_indicator" prefWidth="160" />
+                <TableColumn fx:id="cPurpose" text="purpose_of_contact" prefWidth="200" />
+            </columns>
+        </TableView>
+    </center>
+</BorderPane>

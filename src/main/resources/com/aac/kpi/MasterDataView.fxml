@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<?import javafx.geometry.Insets?>
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.aac.kpi.controller.MasterDataController" spacing="12">
+    <padding>
+        <Insets top="12" right="12" bottom="12" left="12"/>
+    </padding>
+    <children>
+        <HBox spacing="8">
+            <Label text="AAC / Organization / Location Master" style="-fx-font-weight:bold;"/>
+            <Region HBox.hgrow="ALWAYS" />
+            <Button text="Regenerate" onAction="#onRegenerateMasterData" />
+        </HBox>
+        <TableView fx:id="table" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="cAacId" text="AAC ID" prefWidth="120"/>
+                <TableColumn fx:id="cAacName" text="AAC Name" prefWidth="180"/>
+                <TableColumn fx:id="cOrganizationId" text="Org ID" prefWidth="120"/>
+                <TableColumn fx:id="cOrganizationName" text="Org Name" prefWidth="160"/>
+                <TableColumn fx:id="cOrganizationType" text="Org Type" prefWidth="140"/>
+                <TableColumn fx:id="cLocationId" text="Location ID" prefWidth="100"/>
+                <TableColumn fx:id="cLocationName" text="Location Name" prefWidth="160"/>
+                <TableColumn fx:id="cPostalCode" text="Postal" prefWidth="100"/>
+                <TableColumn fx:id="cVolunteerId" text="Volunteer ID" prefWidth="120"/>
+                <TableColumn fx:id="cVolunteerName" text="Volunteer Name" prefWidth="160"/>
+                <TableColumn fx:id="cVolunteerRole" text="Volunteer Role" prefWidth="160"/>
+                <TableColumn fx:id="cActive" text="Active" prefWidth="60"/>
+                <TableColumn fx:id="cRemarks" text="Remarks" prefWidth="180"/>
+            </columns>
+        </TableView>
+        <Label fx:id="statusLabel" text="Ready" />
+    </children>
+</VBox>

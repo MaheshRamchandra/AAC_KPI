@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aac.kpi.controller.QuestionnaireResponseMasterController">
+    <top>
+        <HBox spacing="8" styleClass="toolbar">
+            <children>
+                <Button text="Generate Questionnaires" onAction="#onGenerate" />
+                <Button text="Upload Existing Excel" onAction="#onUploadExcel" />
+                <Button text="Analyze" onAction="#onAnalyze" />
+                <Button text="Save / Export" onAction="#onExport" />
+                <Button text="Clear Sheet" onAction="#onClearSheet" />
+                <Button text="Clear All Sheets" onAction="#onClearAll" />
+            </children>
+        </HBox>
+    </top>
+    <center>
+        <TableView fx:id="table" prefHeight="600.0">
+            <columns>
+                <TableColumn fx:id="cId" text="questionnaire_id" prefWidth="280" />
+                <TableColumn fx:id="cStatus" text="questionnaire_status" prefWidth="120" />
+                <TableColumn fx:id="cQ1" text="questionnaire_q1_answer" prefWidth="160" />
+                <TableColumn fx:id="cQ2" text="questionnaire_q2_answer" prefWidth="160" />
+                <TableColumn fx:id="cQ3" text="questionnaire_q3_answer" prefWidth="160" />
+                <TableColumn fx:id="cQ4" text="questionnaire_q4_answer" prefWidth="160" />
+                <TableColumn fx:id="cQ5" text="questionnaire_q5_answer" prefWidth="160" />
+                <TableColumn fx:id="cQ6" text="questionnaire_q6_answer" prefWidth="160" />
+                <TableColumn fx:id="cQ7" text="questionnaire_q7_answer" prefWidth="160" />
+                <TableColumn fx:id="cQ8" text="questionnaire_q8_answer" prefWidth="160" />
+                <TableColumn fx:id="cQ9" text="questionnaire_q9_answer" prefWidth="160" />
+                <TableColumn fx:id="cQ10" text="questionnaire_q10_answer" prefWidth="180" />
+                <TableColumn fx:id="cPatientRef" text="questionnaire_patient_reference" prefWidth="220" />
+            </columns>
+        </TableView>
+    </center>
+</BorderPane>

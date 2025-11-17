@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aac.kpi.controller.PatientMasterController">
+    <top>
+        <HBox spacing="8" styleClass="toolbar">
+            <children>
+                <Button text="Generate Patients" onAction="#onGenerate" />
+                <Button text="Upload Existing Excel" onAction="#onUploadExcel" />
+                <Button text="Analyze" onAction="#onAnalyze" />
+                <Button text="Save / Export" onAction="#onExport" />
+                <Button text="Clear Sheet" onAction="#onClearSheet" />
+                <Button text="Clear All Sheets" onAction="#onClearAll" />
+            </children>
+        </HBox>
+    </top>
+    <center>
+        <TableView fx:id="table" prefHeight="600.0">
+            <columns>
+                <TableColumn fx:id="cPatientId" text="patient_id" prefWidth="160" />
+                <TableColumn fx:id="cIdentifier" text="patient_identifier_value" prefWidth="200" />
+                <TableColumn fx:id="cBirthdate" text="patient_birthdate" prefWidth="140" />
+                <TableColumn fx:id="cPostal" text="patient_postalcode" prefWidth="140" />
+                <TableColumn fx:id="cRefs" text="attended_event_references" prefWidth="220" />
+                <TableColumn fx:id="cRemarks" text="Working Remarks" prefWidth="160" />
+                <TableColumn fx:id="cGroup" text="Group" prefWidth="90" />
+                <TableColumn fx:id="cType" text="Type" prefWidth="100" />
+                <TableColumn fx:id="cAac" text="AAC" prefWidth="100" />
+                <TableColumn fx:id="cCfs" text="CFS" prefWidth="80" />
+                <TableColumn fx:id="cRf" text="RF" prefWidth="80" />
+                <TableColumn fx:id="cKpiType" text="KPI Type" prefWidth="140" />
+                <TableColumn fx:id="cKpiGroup" text="KPI Group" prefWidth="120" />
+            </columns>
+        </TableView>
+    </center>
+</BorderPane>

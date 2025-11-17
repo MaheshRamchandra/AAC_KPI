@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aac.kpi.controller.PractitionerMasterController">
+    <top>
+        <HBox spacing="8" styleClass="toolbar">
+            <children>
+                <Button text="Generate Practitioners" onAction="#onGenerate" />
+                <Button text="Upload Existing Excel" onAction="#onUploadExcel" />
+                <Button text="Analyze" onAction="#onAnalyze" />
+                <Button text="Save / Export" onAction="#onExport" />
+                <Button text="Clear Sheet" onAction="#onClearSheet" />
+                <Button text="Clear All Sheets" onAction="#onClearAll" />
+            </children>
+        </HBox>
+    </top>
+    <center>
+        <TableView fx:id="table" prefHeight="600.0">
+            <columns>
+                <TableColumn fx:id="cId" text="practitioner_id" prefWidth="260" />
+                <TableColumn fx:id="cIdent" text="practitioner_identifier_value" prefWidth="180" />
+                <TableColumn fx:id="cSystem" text="practitioner_identifier_system" prefWidth="260" />
+                <TableColumn fx:id="cPos" text="practitioner_manpower_position" prefWidth="200" />
+                <TableColumn fx:id="cName" text="practitioner_volunteer_name" prefWidth="180" />
+                <TableColumn fx:id="cCap" text="practitioner_manpower_capacity" prefWidth="160" />
+                <TableColumn fx:id="cAge" text="practitioner_volunteer_age" prefWidth="160" />
+                <TableColumn fx:id="cRemarks" text="Working Remarks" prefWidth="220" />
+            </columns>
+        </TableView>
+    </center>
+</BorderPane>
