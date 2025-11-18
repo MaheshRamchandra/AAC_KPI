@@ -109,9 +109,8 @@ public class EncounterMasterController {
         e.setEncounterId(RandomDataUtil.uuid32().toUpperCase(java.util.Locale.ROOT));
         e.setEncounterStatus("finished");
         e.setEncounterDisplay(DISPLAYS[new java.util.Random().nextInt(DISPLAYS.length)]);
-        LocalDateTime start = LocalDateTime.of(startDate.getYear(), startDate.getMonth(), startDate.getDayOfMonth(), 0, 0);
-        LocalDateTime end = LocalDateTime.of(endDate.getYear(), endDate.getMonth(), endDate.getDayOfMonth(), 23, 59, 59);
-        e.setEncounterStart(RandomDataUtil.randomIsoTimestampBetweenWithOffset(start, end, "+08:00"));
+        LocalDateTime start = startDate.atTime(9, 0);
+        e.setEncounterStart(RandomDataUtil.isoTimestampWithOffset(start, "+08:00"));
         e.setEncounterPurpose(purpose);
         String staff = PREFIXES[new java.util.Random().nextInt(PREFIXES.length)] + " " + STAFF[new java.util.Random().nextInt(STAFF.length)];
         e.setEncounterContactedStaffName(staff);
@@ -204,7 +203,7 @@ public class EncounterMasterController {
         BEFRIENDING_LOWER("befriending"),
         BUDDYING_LOWER("buddying"),
         BUDDYING_CAPITAL("Buddying"),
-        FUNCTIONAL("Functional or heaithscreening Client Self-Declaration");
+        FUNCTIONAL("Functional or healthscreening Client Self-Declaration");
 
         private final String value;
 

@@ -399,13 +399,13 @@ public class ExcelWriter {
             row.createCell(c++).setCellValue(questionnaireId);
             row.createCell(c++).setCellValue(nvl(q.getQuestionnaireStatus()));
             setDateCell(row, c++, q.getQ1(), dateStyle);
-            setDateCell(row, c++, q.getQ2(), dateStyle);
+            row.createCell(c++).setCellValue(nvl(q.getQ2()));
             setDateCell(row, c++, q.getQ3(), dateStyle);
-            setDateCell(row, c++, q.getQ4(), dateStyle);
+            row.createCell(c++).setCellValue(nvl(q.getQ4()));
             setDateCell(row, c++, q.getQ5(), dateStyle);
-            setDateCell(row, c++, q.getQ6(), dateStyle);
+            row.createCell(c++).setCellValue(nvl(q.getQ6()));
             setDateCell(row, c++, q.getQ7(), dateStyle);
-            setDateCell(row, c++, q.getQ8(), dateStyle);
+            row.createCell(c++).setCellValue(nvl(q.getQ8()));
             setDateCell(row, c++, q.getQ9(), dateStyle);
             row.createCell(c++).setCellValue(nvl(q.getQ10()));
             row.createCell(c++).setCellValue(nvl(q.getQuestionnairePatientReference()));

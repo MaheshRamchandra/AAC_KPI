@@ -24,7 +24,9 @@ import javafx.stage.FileChooser;
 import javafx.util.converter.IntegerStringConverter;
 
 import java.io.File;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 public class EventSessionController {
@@ -135,7 +137,7 @@ public class EventSessionController {
             return;
         }
 
-        ChoiceDialog<String> cd = new ChoiceDialog<>("Robust", Arrays.asList("Robust", "Budding", "Befriending"));
+        ChoiceDialog<String> cd = new ChoiceDialog<>("Robust", Arrays.asList("Robust", "Budding", "Befriending", "Frail"));
         cd.setTitle("KPI Type");
         cd.setHeaderText(null);
         cd.setContentText("Select KPI type:");
@@ -147,6 +149,7 @@ public class EventSessionController {
         switch (kpi) {
             case "Befriending" -> baseCount = 52; // >=52
             case "Budding" -> baseCount = 12; // >=12
+            case "Frail" -> baseCount = 6; // fixed in-person count
             default -> baseCount = 1; // Robust
         }
 
@@ -167,6 +170,13 @@ public class EventSessionController {
 
         List<EventSession> newSessions = new ArrayList<>();
         Random rnd = new Random();
+        LocalDateTime fixedStart = range.startDate().atTime(9, 0);
+        LocalDateTime fixedEnd = range.endDate().atTime(17, 0);
+        if (!fixedEnd.isAfter(fixedStart)) fixedEnd = fixedStart.plusHours(1);
+        long durationMinutes = Duration.between(fixedStart, fixedEnd).toMinutes();
+        int durationValue = (int) Math.max(1, durationMinutes);
+        String startText = RandomDataUtil.formatEventDateTime(fixedStart);
+        String endText = RandomDataUtil.formatEventDateTime(fixedEnd);
         for (Patient p : patients) {
             int count = baseCount;
             if ("Befriending".equals(kpi)) count += rnd.nextInt(10); // 52..61
@@ -177,10 +187,9 @@ public class EventSessionController {
                 s.setNumberOfEventSessions(1);
                 s.setEventSessionId1(RandomDataUtil.randomEventId());
                 s.setEventSessionMode1(mode.get().getValue());
-                String[] times = RandomDataUtil.randomEventDateTimeBetween(range.startDate(), range.endDate());
-                s.setEventSessionStartDate1(times[0]);
-                s.setEventSessionEndDate1(times[1]);
-                s.setEventSessionDuration1(Integer.parseInt(times[2]));
+                s.setEventSessionStartDate1(startText);
+                s.setEventSessionEndDate1(endText);
+                s.setEventSessionDuration1(durationValue);
                 s.setEventSessionVenue1(RandomDataUtil.randomVenue());
                 s.setEventSessionCapacity1(RandomDataUtil.randomCapacity());
                 s.setEventSessionPatientReferences1(p.getPatientId());

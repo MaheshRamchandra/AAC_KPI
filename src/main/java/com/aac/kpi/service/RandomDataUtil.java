@@ -3,6 +3,7 @@ package com.aac.kpi.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Random;
@@ -199,5 +200,13 @@ public final class RandomDataUtil {
         long randomSec = startSec + (long) ((endSec - startSec) * RND.nextDouble());
         java.time.LocalDateTime dt = java.time.LocalDateTime.ofEpochSecond(randomSec, 0, off);
         return dt.atOffset(off).format(ISO_ZONED);
+    }
+
+    public static String formatEventDateTime(LocalDateTime dateTime) {
+        return dateTime.format(DATE_TIME);
+    }
+
+    public static String isoTimestampWithOffset(LocalDateTime dateTime, String zoneOffset) {
+        return dateTime.atOffset(ZoneOffset.of(zoneOffset)).format(ISO_ZONED);
     }
 }
