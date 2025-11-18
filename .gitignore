@@ -36,3 +36,8 @@ build/
 
 ### Mac OS ###
 .DS_Store
+build-dmg/
+dmg-output/
+javafx-sdk-17.0.16/
+universal-stub-resources/
+universalJavaApplicationStub

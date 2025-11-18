@@ -202,20 +202,26 @@ public class ExcelWriter {
         };
         createHeaderRow(sheet, headers);
         int r = 1;
-        for (MasterDataService.MasterRow row : masterData.getRows()) {
+        for (MasterDataService.AacCenter center : masterData.getAacCenters()) {
             Row excelRow = sheet.createRow(r++);
             int c = 0;
-            excelRow.createCell(c++).setCellValue(row.aacCenter().aacCenterId());
-            excelRow.createCell(c++).setCellValue(row.aacCenter().aacCenterName());
-            excelRow.createCell(c++).setCellValue(row.organization().organizationId());
-            excelRow.createCell(c++).setCellValue(row.organization().name());
-            excelRow.createCell(c++).setCellValue(row.organization().organizationType());
-            excelRow.createCell(c++).setCellValue(row.location() != null ? row.location().locationId() : "");
-            excelRow.createCell(c++).setCellValue(row.location() != null ? row.location().locationName() : "");
-            excelRow.createCell(c++).setCellValue(row.location() != null ? row.location().postalCode() : "");
-            excelRow.createCell(c++).setCellValue(row.volunteer().volunteerId());
-            excelRow.createCell(c++).setCellValue(row.volunteer().volunteerName());
-            excelRow.createCell(c++).setCellValue(row.volunteer().volunteerRole());
+            MasterDataService.Organization org = masterData.getOrganization(center.organizationId());
+            MasterDataService.Location location = masterData.getPrimaryLocation(center.organizationId());
+            excelRow.createCell(c++).setCellValue(center.aacCenterId());
+            excelRow.createCell(c++).setCellValue(center.aacCenterName());
+            excelRow.createCell(c++).setCellValue(org != null ? org.organizationId() : "");
+            excelRow.createCell(c++).setCellValue(org != null ? org.name() : "");
+            excelRow.createCell(c++).setCellValue(org != null ? org.organizationType() : "");
+            excelRow.createCell(c++).setCellValue(location != null ? location.locationId() : "");
+            excelRow.createCell(c++).setCellValue(location != null ? location.locationName() : "");
+            excelRow.createCell(c++).setCellValue(location != null ? location.postalCode() : "");
+            List<String> volunteerIds = masterData.getVolunteerIds(center.aacCenterId());
+            List<String> volunteerNames = masterData.getVolunteerNames(center.aacCenterId());
+            String joinedIds = volunteerIds.isEmpty() ? "" : String.join("##", volunteerIds);
+            String patrolNames = volunteerNames.isEmpty() ? "" : String.join(", ", volunteerNames);
+            excelRow.createCell(c++).setCellValue(joinedIds);
+            excelRow.createCell(c++).setCellValue(patrolNames);
+            excelRow.createCell(c++).setCellValue("Administrative Support");
             excelRow.createCell(c++).setCellValue("TRUE");
             excelRow.createCell(c).setCellValue("Linked to Befriending KPI");
         }
@@ -586,11 +592,9 @@ public class ExcelWriter {
         }
         Map<String, List<MasterDataService.Volunteer>> volunteersByAac = masterData.getVolunteers().stream()
                 .collect(Collectors.groupingBy(MasterDataService.Volunteer::aacCenterId));
-        String joined = masterData.getVolunteers().stream()
-                .map(MasterDataService.Volunteer::volunteerId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .collect(Collectors.joining("##"));
+        List<String> practitionerIds = practitioners.stream()
+                .map(com.aac.kpi.model.Practitioner::getPractitionerId)
+                .filter(Objects::nonNull).toList();
         CellStyle aacDateTimeStyle = sheet.getWorkbook().createCellStyle();
         aacDateTimeStyle.setDataFormat(sheet.getWorkbook().createDataFormat().getFormat("yyyy-MM-dd HH:mm:ss"));
         int sno = 1;
@@ -611,7 +615,14 @@ public class ExcelWriter {
             row.createCell(i++).setCellValue(nowIsoOffset("+08:00"));
             row.createCell(i++).setCellValue(aac);
             row.createCell(i++).setCellValue(center.aacCenterName());
-            row.createCell(i).setCellValue(joined);
+            List<String> volunteerRefs = volunteersByAac.getOrDefault(aac, List.of()).stream()
+                    .map(MasterDataService.Volunteer::volunteerId)
+                    .filter(Objects::nonNull)
+                    .toList();
+            List<String> references = !volunteerRefs.isEmpty()
+                    ? volunteerRefs
+                    : selectPractitionerSubset(practitionerIds, sno, Math.max(1, Math.min(3, practitionerIds.size())));
+            row.createCell(i).setCellValue(String.join("##", references));
         }
         return rowIndex; // no blank line between sections
     }
@@ -929,11 +940,9 @@ public class ExcelWriter {
             List<Patient> patients,
             MasterData masterData,
             CellStyle headerStyle) {
-        List<MasterDataService.Volunteer> volunteers = masterData.getVolunteers();
-        int total = volunteers.size();
         int requested = com.aac.kpi.service.AppState.getVolunteerPractitionerCount();
-        if (requested <= 0 || requested > total)
-            requested = total; // guard
+        if (requested <= 0)
+            requested = 1;
 
         java.util.List<String> headerList = new java.util.ArrayList<>(java.util.List.of(
                 "S.No", "composition_id", "version_id", "last_updated", "meta_code",
@@ -945,11 +954,39 @@ public class ExcelWriter {
         }
         createHeaderRow(sheet, headerList.toArray(new String[0]), rowIndex++, headerStyle);
 
-        Row row = sheet.createRow(rowIndex++);
+        CellStyle dateStyle = sheet.getWorkbook().createCellStyle();
+        dateStyle.setDataFormat(sheet.getWorkbook().createDataFormat().getFormat("yyyy-MM-dd"));
         CellStyle dateTimeStyle = sheet.getWorkbook().createCellStyle();
         dateTimeStyle.setDataFormat(sheet.getWorkbook().createDataFormat().getFormat("yyyy-MM-dd HH:mm:ss"));
-        int i = 0;
+
+        List<MasterDataService.AacCenter> centers = masterData.getAacCenters();
         int sno = 1;
+        for (MasterDataService.AacCenter center : centers) {
+            List<String> volunteerIds = masterData.getVolunteerIds(center.aacCenterId());
+            if (volunteerIds.isEmpty()) {
+                rowIndex = writeAttendanceRow(sheet, rowIndex, dateStyle, dateTimeStyle, sno++,
+                        center, List.of(), patients, requested);
+            } else {
+                for (String volId : volunteerIds) {
+                    rowIndex = writeAttendanceRow(sheet, rowIndex, dateStyle, dateTimeStyle, sno++,
+                            center, List.of(volId), patients, requested);
+                }
+            }
+        }
+        return rowIndex;
+    }
+
+    private static int writeAttendanceRow(Sheet sheet,
+                                          int rowIndex,
+                                          CellStyle dateStyle,
+                                          CellStyle dateTimeStyle,
+                                          int sno,
+                                          MasterDataService.AacCenter center,
+                                          List<String> practitionerRefs,
+                                          List<Patient> patients,
+                                          int activityColumns) {
+        Row row = sheet.createRow(rowIndex++);
+        int i = 0;
         row.createCell(i++).setCellValue("volunteer_attendance_report_" + sno);
         row.createCell(i++).setCellValue(RandomDataUtil.uuid32().toUpperCase());
         row.createCell(i++).setCellValue(1);
@@ -957,29 +994,30 @@ public class ExcelWriter {
         row.createCell(i++).setCellValue(RandomDataUtil.uuid32().substring(0, 20));
         row.createCell(i++).setCellValue(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM")));
         row.createCell(i++).setCellValue("final");
-        // 'date' must be ISO 8601 with +08:00
         row.createCell(i++).setCellValue(nowIsoOffset("+08:00"));
-        String aac = patients.isEmpty() ? "AAC" : nvl(patients.get(0).getAac());
+
+        String aac = center != null ? center.aacCenterId() : (patients.isEmpty() ? "AAC" : nvl(patients.get(0).getAac()));
+        String centerName = center != null ? center.aacCenterName() : "Active Ageing Centre";
         row.createCell(i++).setCellValue(aac);
-        row.createCell(i++).setCellValue("Active Ageing Centre " + aac.replaceAll("[^0-9]", ""));
-        // Select first N practitioner IDs
-        java.util.List<String> selected = new java.util.ArrayList<>();
-        for (int idx = 0; idx < requested && idx < total; idx++) {
-            String id = volunteers.get(idx).volunteerId();
-            if (id != null && !id.isBlank())
-                selected.add(id);
-        }
-        // Join practitioner references with '##' delimiter
-        String joined = String.join("##", selected);
+        row.createCell(i++).setCellValue("Active Ageing Centre " + centerName.replaceAll("[^0-9]", ""));
+
+        List<String> sanitized = practitionerRefs.stream()
+                .filter(ref -> ref != null && !ref.isBlank())
+                .toList();
+        String joined = String.join("##", sanitized);
         row.createCell(i++).setCellValue(joined);
-        row.createCell(i++).setCellValue(selected.size());
-        // Populate dummy volunteer activity name/date per practitioner
-        CellStyle dateStyle = sheet.getWorkbook().createCellStyle();
-        dateStyle.setDataFormat(sheet.getWorkbook().createDataFormat().getFormat("yyyy-MM-dd"));
-        for (int n = 1; n <= selected.size(); n++) {
-            row.createCell(i++).setCellValue("Painting class");
-            setDateCell(row, i++, "2024-02-11", dateStyle);
+        row.createCell(i++).setCellValue(sanitized.size());
+
+        for (int n = 0; n < activityColumns; n++) {
+            if (n < sanitized.size()) {
+                row.createCell(i++).setCellValue("Painting class");
+                setDateCell(row, i++, "2024-02-11", dateStyle);
+            } else {
+                row.createCell(i++).setCellValue("");
+                row.createCell(i++).setCellValue("");
+            }
         }
+
         return rowIndex;
     }
 
@@ -992,7 +1030,7 @@ public class ExcelWriter {
         // Per request: columns for organization_report in Common sheet
         String[] headers = { "S. No", "id", "version_id", "last_updated", "meta_code",
                 "start", "end", "aac_center_ids", "uen", "active", "organization_type_code",
-                "organization_type_display", "name", "locations" };
+                "organization_type_display", "name" };
         createHeaderRow(sheet, headers, rowIndex++, headerStyle);
 
         Map<String, Patient> pIndex = new HashMap<>();
@@ -1001,9 +1039,6 @@ public class ExcelWriter {
         }
         Map<String, List<MasterDataService.AacCenter>> centersByOrg = masterData.getAacCenters().stream()
                 .collect(Collectors.groupingBy(MasterDataService.AacCenter::organizationId));
-        Map<String, List<String>> locationIdsByOrg = masterData.getLocations().stream()
-                .collect(Collectors.groupingBy(MasterDataService.Location::organizationId,
-                        Collectors.mapping(MasterDataService.Location::locationId, Collectors.toList())));
 
         Map<String, LocalDateTime> earliestStartByAac = new HashMap<>();
         Map<String, LocalDateTime> latestEndByAac = new HashMap<>();
@@ -1053,15 +1088,13 @@ public class ExcelWriter {
             row.createCell(i++).setCellValue(RandomDataUtil.randomUen());
             row.createCell(i++).setCellValue("TRUE");
             if (org != null) {
-            row.createCell(i++).setCellValue(org.organizationType());
-            row.createCell(i++).setCellValue("AAC");
-            String centerNames = related.stream()
-                    .map(MasterDataService.AacCenter::aacCenterName)
-                    .collect(Collectors.joining("##"));
-            row.createCell(i++).setCellValue(centerNames);
-            List<String> locIds = locationIdsByOrg.getOrDefault(org.organizationId(), List.of());
-            row.createCell(i++).setCellValue(String.join(", ", locIds));
-        } else {
+                row.createCell(i++).setCellValue(org.organizationType());
+                row.createCell(i++).setCellValue("AAC");
+                String centerNames = related.stream()
+                        .map(MasterDataService.AacCenter::aacCenterName)
+                        .collect(Collectors.joining("##"));
+                row.createCell(i++).setCellValue(centerNames);
+            } else {
                 row.createCell(i++).setCellValue("");
                 row.createCell(i++).setCellValue("");
                 row.createCell(i++).setCellValue("");
@@ -1108,6 +1141,17 @@ public class ExcelWriter {
         return LocalDate.of(2025, 4, 1);
     }
 
+    private static List<String> selectPractitionerSubset(List<String> practitionerIds, int rowNumber, int limit) {
+        if (practitionerIds.isEmpty())
+            return Collections.emptyList();
+        int size = Math.min(limit, practitionerIds.size());
+        List<String> subset = new ArrayList<>(size);
+        for (int idx = 0; idx < size; idx++) {
+            subset.add(practitionerIds.get((rowNumber + idx) % practitionerIds.size()));
+        }
+        return subset;
+    }
+
     private static void writeAacReportSheet(XSSFWorkbook wb, List<Patient> patients, List<EventSession> sessions,
             List<com.aac.kpi.model.Practitioner> practitioners) {
         XSSFSheet sheet = wb.createSheet("aac_report");
@@ -1136,15 +1180,12 @@ public class ExcelWriter {
                 latestByAac.merge(aac, dt, (a, b) -> a.isAfter(b) ? a : b);
         }
 
-        String practitionersJoined = String.join("##", practitioners.stream()
-                .map(com.aac.kpi.model.Practitioner::getPractitionerId)
-                .filter(Objects::nonNull).toList());
-
         int r = 1;
         CellStyle dateTimeStyle = sheet.getWorkbook().createCellStyle();
         dateTimeStyle.setDataFormat(sheet.getWorkbook().createDataFormat().getFormat("yyyy-MM-dd HH:mm:ss"));
         for (Map.Entry<String, Long> e : clientsByAac.entrySet()) {
             String aac = e.getKey();
+            int rowNumber = r;
             Row row = sheet.createRow(r++);
             int i = 0;
             row.createCell(i++).setCellValue(RandomDataUtil.uuid32().toUpperCase());
@@ -1159,7 +1200,9 @@ public class ExcelWriter {
             setDateTimeCell(row, i++, nowStamp(), dateTimeStyle);
             row.createCell(i++).setCellValue(aac);
             row.createCell(i++).setCellValue("Active Ageing Centre " + aac.replaceAll("[^0-9]", ""));
-            row.createCell(i).setCellValue(practitionersJoined);
+            row.createCell(i).setCellValue(String.join("##", practitioners.stream()
+                    .map(com.aac.kpi.model.Practitioner::getPractitionerId)
+                    .filter(Objects::nonNull).toList()));
         }
         autoSize(sheet, headers.length);
     }
