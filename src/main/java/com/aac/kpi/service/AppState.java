@@ -16,6 +16,7 @@ public final class AppState {
     private static volatile String jsonConverterJarPath = "lib/KPITool-1.0-SNAPSHOT-jar-with-dependencies.jar";
     private static volatile String eventReportLabel = "";
     private static volatile int volunteersPerCenter = 3;
+    private static volatile int aacCenterCount = 150;
 
     private static final Set<String> highlightedPatientIds = new LinkedHashSet<>();
     private static final Set<String> highlightedEventSessionCompositionIds = new LinkedHashSet<>();
@@ -49,6 +50,13 @@ public final class AppState {
 
     public static int getVolunteersPerCenter() { return volunteersPerCenter; }
     public static void setVolunteersPerCenter(int value) { volunteersPerCenter = Math.max(0, value); }
+
+    public static int getAacCenterCount() { return aacCenterCount; }
+    public static void setAacCenterCount(int value) {
+        // keep within a reasonable range to avoid accidental huge sheets
+        if (value <= 0) value = 10;
+        aacCenterCount = Math.min(value, 1000);
+    }
 
     public static Set<String> getHighlightedPatientIds() { return Collections.unmodifiableSet(highlightedPatientIds); }
     public static void addHighlightedPatientId(String id) {

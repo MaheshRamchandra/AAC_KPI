@@ -30,13 +30,17 @@ public final class MasterDataService {
     private MasterDataService() {}
 
     public static MasterData generate() {
-        return generate(AppState.getVolunteersPerCenter());
+        return generate(AppState.getVolunteersPerCenter(), AppState.getAacCenterCount());
     }
 
     public static MasterData generate(int volunteersPerCenter) {
+        return generate(volunteersPerCenter, AppState.getAacCenterCount());
+    }
+
+    public static MasterData generate(int volunteersPerCenter, int centerCount) {
         Random rnd = new Random();
 
-        int totalCenters = 10 + rnd.nextInt(6); // between 10 and 15 AAC centers
+        int totalCenters = centerCount > 0 ? centerCount : 150;
         List<AacCenter> centers = new ArrayList<>();
         List<Organization> organizations = new ArrayList<>();
         Iterator<String> areaIter = new ArrayList<>(AREA_NAMES).iterator();

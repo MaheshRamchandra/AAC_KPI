@@ -41,25 +41,39 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainController {
-    @FXML private TabPane tabPane;
-    @FXML private Tab patientTab;
-    @FXML private Tab eventTab;
-    @FXML private Tab practitionerTab;
-    @FXML private Tab encounterTab;
-    @FXML private Tab questionnaireTab;
-    @FXML private Tab commonTab;
-    @FXML private Tab scenarioTab;
-    @FXML private Tab jsonTab;
-    @FXML private Tab jsonCsvTab;
-    @FXML private Tab userGuideTab;
-    @FXML private Tab masterDataTab;
-    @FXML private Label statusLabel;
+    @FXML
+    private TabPane tabPane;
+    @FXML
+    private Tab patientTab;
+    @FXML
+    private Tab eventTab;
+    @FXML
+    private Tab practitionerTab;
+    @FXML
+    private Tab encounterTab;
+    @FXML
+    private Tab questionnaireTab;
+    @FXML
+    private Tab commonTab;
+    @FXML
+    private Tab scenarioTab;
+    @FXML
+    private Tab jsonTab;
+    @FXML
+    private Tab jsonCsvTab;
+    @FXML
+    private Tab userGuideTab;
+    @FXML
+    private Tab masterDataTab;
+    @FXML
+    private Label statusLabel;
 
     private final ObservableList<Patient> patients = FXCollections.observableArrayList();
     private final ObservableList<EventSession> sessions = FXCollections.observableArrayList();
     private final ObservableList<com.aac.kpi.model.Practitioner> practitioners = FXCollections.observableArrayList();
     private final ObservableList<com.aac.kpi.model.Encounter> encounters = FXCollections.observableArrayList();
-    private final ObservableList<com.aac.kpi.model.QuestionnaireResponse> questionnaires = FXCollections.observableArrayList();
+    private final ObservableList<com.aac.kpi.model.QuestionnaireResponse> questionnaires = FXCollections
+            .observableArrayList();
     private final ObservableList<CommonRow> commonRows = FXCollections.observableArrayList();
     private final ObservableList<ScenarioTestCase> scenarios = FXCollections.observableArrayList();
 
@@ -111,7 +125,8 @@ public class MainController {
         encounterTab.setContent(enRoot);
 
         // Load QuestionnaireResponse Master view
-        FXMLLoader qLoader = new FXMLLoader(getClass().getResource("/com/aac/kpi/QuestionnaireResponseMasterView.fxml"));
+        FXMLLoader qLoader = new FXMLLoader(
+                getClass().getResource("/com/aac/kpi/QuestionnaireResponseMasterView.fxml"));
         Node qRoot = qLoader.load();
         questionnaireController = qLoader.getController();
         questionnaireController.init(questionnaires, patients, sessions, practitioners, encounters, statusLabel);
@@ -160,18 +175,24 @@ public class MainController {
         FileChooser fc = new FileChooser();
         fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel", "*.xlsx"));
         File f = fc.showOpenDialog(owner);
-        if (f == null) return;
+        if (f == null)
+            return;
         try {
             List<Patient> p = ExcelReader.readPatients(f);
             List<EventSession> s = ExcelReader.readEventSessions(f);
             List<com.aac.kpi.model.Practitioner> pr = ExcelReader.readPractitioners(f);
             List<com.aac.kpi.model.Encounter> en = ExcelReader.readEncounters(f);
             List<com.aac.kpi.model.QuestionnaireResponse> qs = ExcelReader.readQuestionnaires(f);
-            if (!p.isEmpty()) patients.setAll(p);
-            if (!s.isEmpty()) sessions.setAll(s);
-            if (!pr.isEmpty()) practitioners.setAll(pr);
-            if (!en.isEmpty()) encounters.setAll(en);
-            if (!qs.isEmpty()) questionnaires.setAll(qs);
+            if (!p.isEmpty())
+                patients.setAll(p);
+            if (!s.isEmpty())
+                sessions.setAll(s);
+            if (!pr.isEmpty())
+                practitioners.setAll(pr);
+            if (!en.isEmpty())
+                encounters.setAll(en);
+            if (!qs.isEmpty())
+                questionnaires.setAll(qs);
             AppState.setCurrentExcelFile(f);
             AppState.setDirty(false);
             LinkService.fillPatientAttendedRefs(patients, sessions);
@@ -182,7 +203,8 @@ public class MainController {
             questionnaireController.refreshTable();
             updateStatus();
             commonController.refreshTable();
-            if (jsonController != null) jsonController.setExcelPath(f);
+            if (jsonController != null)
+                jsonController.setExcelPath(f);
         } catch (Exception ex) {
             new Alert(Alert.AlertType.ERROR, "Failed to load: " + ex.getMessage(), ButtonType.OK).showAndWait();
         }
@@ -195,7 +217,8 @@ public class MainController {
             fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel", "*.xlsx"));
             fc.setInitialFileName("KPI_Data.xlsx");
             File chosen = fc.showSaveDialog(tabPane.getScene().getWindow());
-            if (chosen == null) return;
+            if (chosen == null)
+                return;
             // Prompt for volunteer_attendance_report practitioner count
             int total = practitioners != null ? practitioners.size() : 0;
             if (total > 0) {
@@ -204,22 +227,38 @@ public class MainController {
                 dlg.setHeaderText(null);
                 dlg.setContentText(String.format("Enter number of practitioners (max %d):", total));
                 java.util.Optional<String> res = dlg.showAndWait();
-                if (res.isEmpty()) return; // cancelled
+                if (res.isEmpty())
+                    return; // cancelled
                 int n;
-                try { n = Integer.parseInt(res.get().trim()); } catch (Exception ex) { new Alert(Alert.AlertType.ERROR, "Please enter a valid integer.", ButtonType.OK).showAndWait(); return; }
-                if (n < 1 || n > total) { new Alert(Alert.AlertType.ERROR, "Total number of practitioners is " + total + ". Please choose a number between 1 and " + total + ".", ButtonType.OK).showAndWait(); return; }
+                try {
+                    n = Integer.parseInt(res.get().trim());
+                } catch (Exception ex) {
+                    new Alert(Alert.AlertType.ERROR, "Please enter a valid integer.", ButtonType.OK).showAndWait();
+                    return;
+                }
+                if (n < 1 || n > total) {
+                    new Alert(Alert.AlertType.ERROR, "Total number of practitioners is " + total
+                            + ". Please choose a number between 1 and " + total + ".", ButtonType.OK).showAndWait();
+                    return;
+                }
                 AppState.setVolunteerPractitionerCount(n);
             } else {
                 AppState.setVolunteerPractitionerCount(0);
             }
-            java.util.List<com.aac.kpi.model.CommonRow> commons = (questionnaireController != null && commonController != null) ? commonControllerItems() : java.util.List.of();
-            File file = ExcelWriter.saveToExcel(patients, sessions, practitioners, encounters, questionnaires, commons, chosen);
+            java.util.List<com.aac.kpi.model.CommonRow> commons = (questionnaireController != null
+                    && commonController != null) ? commonControllerItems() : java.util.List.of();
+            File file = ExcelWriter.saveToExcel(patients, sessions, practitioners, encounters, questionnaires, commons,
+                    chosen);
             AppState.setCurrentExcelFile(file);
             AppState.setDirty(false);
-            new Alert(Alert.AlertType.INFORMATION, "Exported to: " + file.getAbsolutePath(), ButtonType.OK).showAndWait();
-            statusLabel.setText(String.format("Generated %d patients | %d sessions | %d practitioners | %d encounters | %d questionnaires | Last export: %s",
-                    patients.size(), sessions.size(), practitioners.size(), encounters.size(), questionnaires.size(), ExcelWriter.nowStamp()));
-            if (jsonController != null) jsonController.setExcelPath(file);
+            new Alert(Alert.AlertType.INFORMATION, "Exported to: " + file.getAbsolutePath(), ButtonType.OK)
+                    .showAndWait();
+            statusLabel.setText(String.format(
+                    "Generated %d patients | %d sessions | %d practitioners | %d encounters | %d questionnaires | Last export: %s",
+                    patients.size(), sessions.size(), practitioners.size(), encounters.size(), questionnaires.size(),
+                    ExcelWriter.nowStamp()));
+            if (jsonController != null)
+                jsonController.setExcelPath(file);
         } catch (Exception ex) {
             new Alert(Alert.AlertType.ERROR, "Export failed: " + ex.getMessage(), ButtonType.OK).showAndWait();
         }
@@ -231,7 +270,8 @@ public class MainController {
      */
     private void onGenerateFromScenariosAndExport() {
         if (scenarios.isEmpty()) {
-            new Alert(Alert.AlertType.INFORMATION, "No scenarios defined. Please add at least one scenario first.", ButtonType.OK).showAndWait();
+            new Alert(Alert.AlertType.INFORMATION, "No scenarios defined. Please add at least one scenario first.",
+                    ButtonType.OK).showAndWait();
             return;
         }
         try {
@@ -257,7 +297,8 @@ public class MainController {
             // After data is in place, run the usual export flow (Save As)
             onExportExcelAs();
         } catch (Exception ex) {
-            new Alert(Alert.AlertType.ERROR, "Scenario generation failed: " + ex.getMessage(), ButtonType.OK).showAndWait();
+            new Alert(Alert.AlertType.ERROR, "Scenario generation failed: " + ex.getMessage(), ButtonType.OK)
+                    .showAndWait();
         }
     }
 
@@ -277,21 +318,36 @@ public class MainController {
                 dlg.setHeaderText(null);
                 dlg.setContentText(String.format("Enter number of practitioners (max %d):", total));
                 java.util.Optional<String> res = dlg.showAndWait();
-                if (res.isEmpty()) return; // cancelled
+                if (res.isEmpty())
+                    return; // cancelled
                 int n;
-                try { n = Integer.parseInt(res.get().trim()); } catch (Exception ex) { new Alert(Alert.AlertType.ERROR, "Please enter a valid integer.", ButtonType.OK).showAndWait(); return; }
-                if (n < 1 || n > total) { new Alert(Alert.AlertType.ERROR, "Total number of practitioners is " + total + ". Please choose a number between 1 and " + total + ".", ButtonType.OK).showAndWait(); return; }
+                try {
+                    n = Integer.parseInt(res.get().trim());
+                } catch (Exception ex) {
+                    new Alert(Alert.AlertType.ERROR, "Please enter a valid integer.", ButtonType.OK).showAndWait();
+                    return;
+                }
+                if (n < 1 || n > total) {
+                    new Alert(Alert.AlertType.ERROR, "Total number of practitioners is " + total
+                            + ". Please choose a number between 1 and " + total + ".", ButtonType.OK).showAndWait();
+                    return;
+                }
                 AppState.setVolunteerPractitionerCount(n);
             } else {
                 AppState.setVolunteerPractitionerCount(0);
             }
-            java.util.List<com.aac.kpi.model.CommonRow> commons = (questionnaireController != null && commonController != null) ? commonControllerItems() : java.util.List.of();
-            File file = ExcelWriter.saveToExcel(patients, sessions, practitioners, encounters, questionnaires, commons, dest);
+            java.util.List<com.aac.kpi.model.CommonRow> commons = (questionnaireController != null
+                    && commonController != null) ? commonControllerItems() : java.util.List.of();
+            File file = ExcelWriter.saveToExcel(patients, sessions, practitioners, encounters, questionnaires, commons,
+                    dest);
             AppState.setDirty(false);
             new Alert(Alert.AlertType.INFORMATION, "Saved: " + file.getAbsolutePath(), ButtonType.OK).showAndWait();
-            statusLabel.setText(String.format("Generated %d patients | %d sessions | %d practitioners | %d encounters | %d questionnaires | Last export: %s",
-                    patients.size(), sessions.size(), practitioners.size(), encounters.size(), questionnaires.size(), ExcelWriter.nowStamp()));
-            if (jsonController != null) jsonController.setExcelPath(file);
+            statusLabel.setText(String.format(
+                    "Generated %d patients | %d sessions | %d practitioners | %d encounters | %d questionnaires | Last export: %s",
+                    patients.size(), sessions.size(), practitioners.size(), encounters.size(), questionnaires.size(),
+                    ExcelWriter.nowStamp()));
+            if (jsonController != null)
+                jsonController.setExcelPath(file);
         } catch (Exception ex) {
             new Alert(Alert.AlertType.ERROR, "Save failed: " + ex.getMessage(), ButtonType.OK).showAndWait();
         }
@@ -307,7 +363,8 @@ public class MainController {
                 java.util.List<com.aac.kpi.model.CommonRow> list = (java.util.List<com.aac.kpi.model.CommonRow>) v;
                 return list;
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return java.util.List.of();
     }
 
@@ -329,8 +386,10 @@ public class MainController {
 
     private void updateStatus() {
         String dirty = AppState.isDirty() ? " (unsaved)" : "";
-        statusLabel.setText(String.format("Generated %d patients | %d sessions | %d practitioners | %d encounters | %d questionnaires%s | Last export: ",
-                patients.size(), sessions.size(), practitioners.size(), encounters.size(), questionnaires.size(), dirty));
+        statusLabel.setText(String.format(
+                "Generated %d patients | %d sessions | %d practitioners | %d encounters | %d questionnaires%s | Last export: ",
+                patients.size(), sessions.size(), practitioners.size(), encounters.size(), questionnaires.size(),
+                dirty));
     }
 
     private void clearAllSheets() {
@@ -349,12 +408,14 @@ public class MainController {
         encounterController.refreshTable();
         questionnaireController.refreshTable();
         commonController.refreshTable();
-        if (scenarioController != null) scenarioController.resetForm();
+        if (scenarioController != null)
+            scenarioController.resetForm();
         updateStatus();
     }
 
     private void updatePractitionersFromMaster(MasterDataService.MasterData masterData) {
-        if (masterData == null) return;
+        if (masterData == null)
+            return;
         List<Practitioner> list = new ArrayList<>();
         for (MasterDataService.Volunteer vol : masterData.getVolunteers()) {
             Practitioner p = new Practitioner();
@@ -369,7 +430,8 @@ public class MainController {
             list.add(p);
         }
         practitioners.setAll(list);
-        if (practitionerController != null) practitionerController.refreshTable();
+        if (practitionerController != null)
+            practitionerController.refreshTable();
     }
 
     private MasterDataService.MasterData ensureMasterData() {
@@ -387,7 +449,8 @@ public class MainController {
         root.setFillWidth(true);
         Label heading = new Label("User Guide & Tab Flow");
         heading.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
-        Label intro = new Label("Each tab maps to a specific sheet or export path. This guide explains what logic runs there, whether the data is dummy or sourced from uploaded Excel, and how the sheets feed the final exports.");
+        Label intro = new Label(
+                "Each tab maps to a specific sheet or export path. This guide explains what logic runs there, whether the data is dummy or sourced from uploaded Excel, and how the sheets feed the final exports.");
         intro.setWrapText(true);
         intro.setMaxWidth(980);
         root.getChildren().addAll(heading, intro);
@@ -396,57 +459,47 @@ public class MainController {
                         "Patient Master",
                         "Primary patient roster. Each row holds demographics, postal codes, KPI buckets, and the attended session references that mirror Event Session rows.",
                         "Data comes from the Patient Master sheet of any uploaded workbook (ExcelReader.readPatients) or from dummy generation (Generate Patients dialog, RandomDataUtil + NRICGeneratorUtil).",
-                        "Edits mark AppState dirty, Analyze uses KpiService.computeForFY, and LinkService keeps attendedEventReferences synced with sessions."
-                ),
+                        "Edits mark AppState dirty, Analyze uses KpiService.computeForFY, and LinkService keeps attendedEventReferences synced with sessions."),
                 createGuideSection(
                         "Event Session",
                         "Event sessions detail mode, venue, capacity, timestamps, and attended flags tied to patients.",
                         "Read from the Event Session sheet of an uploaded Excel workbook or generated by the KPI-type-aware generator (RandomDataUtil) with Befriending/Buddying rules.",
-                        "Mutations call LinkService.fillPatientAttendedRefs so patients always show the most recent attendance data."
-                ),
+                        "Mutations call LinkService.fillPatientAttendedRefs so patients always show the most recent attendance data."),
                 createGuideSection(
                         "Practitioner Master",
                         "Volunteer/practitioner metadata used in exports and attendance reports.",
                         "Initially seeded from MasterDataService.generate() (visible in the Master Data tab), but you can regenerate, upload a Practitioner sheet, or append dummy volunteers via RandomDataUtil.",
-                        "Edited rows are exported directly, and Analyze validates duplicate IDs, age, and capacity."
-                ),
+                        "Edited rows are exported directly, and Analyze validates duplicate IDs, age, and capacity."),
                 createGuideSection(
                         "Encounter Master",
                         "Encounters cross-reference patients, staff, and referral context. Start times must follow ISO+08:00 and status defaults to finished.",
                         "Uploaded from the Encounter Master sheet or produced by the Generate Encounters dialog (uses RandomDataUtil-derived staff, venues, and masks).",
-                        "Validation enforces 32-char IDs, finished status, and time formatting while generation pulls IDs from patients and practitioners."
-                ),
+                        "Validation enforces 32-char IDs, finished status, and time formatting while generation pulls IDs from patients and practitioners."),
                 createGuideSection(
                         "QuestionnaireResponse Master",
                         "Holds the 10-question KPIs per resident along with status and patient linkage.",
                         "Loaded from the QuestionnaireResponse Master sheet or seeded through Generate Questionnaires (RandomDataUtil).",
-                        "Analyze ensures 32-char IDs, completed status, alternating date/score answers, and references back to the relevant patient."
-                ),
+                        "Analyze ensures 32-char IDs, completed status, alternating date/score answers, and references back to the relevant patient."),
                 createGuideSection(
                         "Common",
                         "Aggregates all other sheets into CommonRow compositions that the Excel writer and JSON exporter consume.",
                         "Built on demand via CommonBuilderService using Patient, Event, Encounter, Questionnaire, and Practitioner lists; you may also upload a pre-made Common sheet for overrides.",
-                        "Dialogs prompt for CFS bucket, social risk label, and event report label before building; exported rows keep patient/encounter/questionnaire references aligned."
-                ),
+                        "Dialogs prompt for CFS bucket, social risk label, and event report label before building; exported rows keep patient/encounter/questionnaire references aligned."),
                 createGuideSection(
                         "KPI JSON",
                         "Runs the external JSON converter to turn the current KPI workbook into FHIR bundles.",
                         "Points at the current Excel file (AppState keeps the most recently exported path) or any user-selected workbook; counts can be auto-filled from that sheet.",
-                        "You supply the converter JAR and output folder, then JsonExportService.run is executed in a background task while the log area captures stdout/stderr."
-                ),
+                        "You supply the converter JAR and output folder, then JsonExportService.run is executed in a background task while the log area captures stdout/stderr."),
                 createGuideSection(
                         "JSON → CSV",
                         "Post-processes exported JSON folders into a compact CSV of AAC IDs and raw resources.",
                         "Reads directories produced by the KPI JSON export (or any other JSON bundles) with Gson.",
-                        "Traverses each JSON to find AAC identifiers, quotes both values, normalizes newline characters, and logs every generated CSV file."
-                ),
+                        "Traverses each JSON to find AAC identifiers, quotes both values, normalizes newline characters, and logs every generated CSV file."),
                 createGuideSection(
                         "Master Data",
                         "Read-only view of AAC center → organization → volunteer rows.",
                         "MasterDataService.generate() supplies fake AAC/organization/location/volunteer entries; MainController copies volunteers into Practitioner Master automatically.",
-                        "Use Regenerate to refresh the cached master data and rerun updatePractitionersFromMaster."
-                )
-        );
+                        "Use Regenerate to refresh the cached master data and rerun updatePractitionersFromMaster."));
         root.getChildren().add(new Separator());
         Label diagramHeading = new Label("Mind map of sheet connections");
         diagramHeading.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
@@ -463,7 +516,8 @@ public class MainController {
     private Node createGuideSection(String title, String description, String dataNote, String logicNote) {
         VBox section = new VBox(6);
         section.setPadding(new Insets(10));
-        section.setStyle("-fx-background-color: #f7f7f7; -fx-border-color: #dfe3ea; -fx-border-radius: 8; -fx-background-radius: 8;");
+        section.setStyle(
+                "-fx-background-color: #f7f7f7; -fx-border-color: #dfe3ea; -fx-border-radius: 8; -fx-background-radius: 8;");
         Label titleLabel = new Label(title);
         titleLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold;");
         Label descriptionLabel = new Label(description);
@@ -488,7 +542,8 @@ public class MainController {
         drawMindMap(gc);
         StackPane wrapper = new StackPane(canvas);
         wrapper.setPadding(new Insets(12));
-        wrapper.setStyle("-fx-background-color: white; -fx-border-color: #c5cdd5; -fx-border-radius: 12; -fx-background-radius: 12;");
+        wrapper.setStyle(
+                "-fx-background-color: white; -fx-border-color: #c5cdd5; -fx-border-radius: 12; -fx-background-radius: 12;");
         return wrapper;
     }
 
@@ -508,17 +563,16 @@ public class MainController {
                 new DiagramNode("Questionnaire\nResponse Master", 520, 160),
                 new DiagramNode("Common\nAggregator", 660, 110),
                 new DiagramNode("KPI JSON\nExport", 340, 260),
-                new DiagramNode("JSON → CSV\nConverter", 520, 260)
-        );
+                new DiagramNode("JSON → CSV\nConverter", 520, 260));
         int[][] edges = {
-                {0, 3},
-                {1, 6},
-                {2, 6},
-                {3, 6},
-                {4, 6},
-                {5, 6},
-                {6, 7},
-                {7, 8}
+                { 0, 3 },
+                { 1, 6 },
+                { 2, 6 },
+                { 3, 6 },
+                { 4, 6 },
+                { 5, 6 },
+                { 6, 7 },
+                { 7, 8 }
         };
         for (int[] edge : edges) {
             DiagramNode from = nodes.get(edge[0]);
@@ -541,9 +595,9 @@ public class MainController {
             for (int i = 0; i < lines.length; i++) {
                 double lineY = node.y + (i - (lines.length - 1) / 2.0) * 14;
                 gc.setFill(Color.web("#1f2933"));
-        gc.fillText(lines[i], node.x, lineY);
-    }
-}
+                gc.fillText(lines[i], node.x, lineY);
+            }
+        }
     }
 
     private static final class DiagramNode {
@@ -561,7 +615,8 @@ public class MainController {
     private Node createExplanationSection() {
         VBox section = new VBox(6);
         section.setPadding(new Insets(16));
-        section.setStyle("-fx-background-color: #fafafa; -fx-border-color: #cfd8df; -fx-border-radius: 10; -fx-background-radius: 10;");
+        section.setStyle(
+                "-fx-background-color: #fafafa; -fx-border-color: #cfd8df; -fx-border-radius: 10; -fx-background-radius: 10;");
         Label heading = new Label("Explanation");
         heading.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
         String details = """

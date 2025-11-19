@@ -86,9 +86,14 @@ public final class ScenarioGenerationService {
         AppState.clearHighlightedQuestionnaireIds();
         AppState.clearHighlightedPractitionerIds();
 
-        for (ScenarioTestCase scenario : scenarios) {
+        List<MasterDataService.AacCenter> centers = masterData.getAacCenters();
+        for (int idx = 0; idx < scenarios.size(); idx++) {
+            ScenarioTestCase scenario = scenarios.get(idx);
+            MasterDataService.AacCenter center = centers.isEmpty()
+                    ? null
+                    : centers.get(idx % centers.size());
             generateForScenario(scenario, patients, sessions, encounters, questionnaires, practitioners,
-                    masterData, aacPostalCodes, allPostalCodes);
+                    masterData, aacPostalCodes, allPostalCodes, center);
         }
 
         // Build Common rows from the aggregated lists; Common rows stay
@@ -108,7 +113,8 @@ public final class ScenarioGenerationService {
                                             List<Practitioner> practitioners,
                                             MasterDataService.MasterData masterData,
                                             Map<String, Set<String>> aacPostalCodes,
-                                            Set<String> allPostalCodes) {
+                                            Set<String> allPostalCodes,
+                                            MasterDataService.AacCenter selectedCenter) {
         if (scenario == null) return;
         int numberOfSeniors = parsePositiveInt(scenario.getNumberOfSeniors(), 0);
         if (numberOfSeniors <= 0) return;
@@ -122,18 +128,13 @@ public final class ScenarioGenerationService {
         String purpose = nvl(scenario.getPurposeOfContact());
         int age = parsePositiveInt(scenario.getAge(), 60);
 
-        LocalDate aapDate = parseDateFlexible(scenario.getAapSessionDate());
+        String aapRaw = scenario.getAapSessionDate();
+        LocalDate aapDate = parseDateFlexible(aapRaw);
         LocalDate contactDate = parseDateFlexible(scenario.getDateOfContact());
 
         LocalDate baseDate = contactDate != null ? contactDate
                 : (aapDate != null ? aapDate : LocalDate.now());
 
-        // Pick one AAC centre for this scenario
-        MasterDataService.AacCenter selectedCenter = null;
-        List<MasterDataService.AacCenter> centers = masterData != null ? masterData.getAacCenters() : List.of();
-        if (!centers.isEmpty()) {
-            selectedCenter = centers.get(RND.nextInt(centers.size()));
-        }
         String aacId = selectedCenter != null ? selectedCenter.aacCenterId() : RandomDataUtil.randomAAC();
         Set<String> servedPostals = aacPostalCodes.getOrDefault(aacId, Set.of());
 
@@ -184,7 +185,8 @@ public final class ScenarioGenerationService {
 
         if (aapAttendanceCount > 0) {
             List<EventSession> scenarioSessions = generateEventSessionsForScenario(
-                    scenarioPatients, aapAttendanceCount, modeOfEvent, aapDate != null ? aapDate : baseDate, purpose);
+                    scenarioPatients, aapAttendanceCount, modeOfEvent,
+                    aapRaw, aapDate != null ? aapDate : baseDate, purpose);
             sessions.addAll(scenarioSessions);
         }
 
@@ -200,16 +202,28 @@ public final class ScenarioGenerationService {
     private static List<EventSession> generateEventSessionsForScenario(List<Patient> patients,
                                                                        int aapAttendanceCount,
                                                                        String modeOfEvent,
+                                                                       String aapRaw,
                                                                        LocalDate aapDate,
                                                                        String purpose) {
         List<EventSession> list = new ArrayList<>();
         if (patients.isEmpty() || aapAttendanceCount <= 0) return List.of();
 
-        LocalDateTime startBase = aapDate.atTime(9, 0);
-        LocalDateTime endBase = startBase.plusHours(2);
+        LocalDateTime startBase;
+        LocalDateTime endBase;
+        if (aapRaw != null && aapRaw.toLowerCase(Locale.ENGLISH).contains("between")
+                && aapRaw.contains("01 Apr") && aapRaw.contains("31 Mar")) {
+            // Use FY 2025-04-01..2026-03-31 window when a range is specified
+            String[] parts = RandomDataUtil.randomEventDateTimeFY2025_26AndDuration();
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+            startBase = LocalDateTime.parse(parts[0], fmt);
+            endBase = LocalDateTime.parse(parts[1], fmt);
+        } else {
+            startBase = aapDate.atTime(9, 0);
+            endBase = startBase.plusHours(2);
+        }
         int durationMinutes = (int) java.time.Duration.between(startBase, endBase).toMinutes();
-        String startText = RandomDataUtil.formatEventDateTime(startBase);
-        String endText = RandomDataUtil.formatEventDateTime(endBase);
+        String startText = RandomDataUtil.isoTimestampWithOffset(startBase, "+08:00");
+        String endText = RandomDataUtil.isoTimestampWithOffset(endBase, "+08:00");
 
         List<String> ids = new ArrayList<>();
         for (Patient p : patients) ids.add(p.getPatientId());

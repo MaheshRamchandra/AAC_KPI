@@ -54,11 +54,23 @@ public class ValidatorService {
             } else if (!comp.add(s.getCompositionId())) {
                 issues.add(row + "Duplicate composition_id: " + s.getCompositionId());
             }
-            String pid = s.getEventSessionPatientReferences1();
-            if (pid == null || pid.isBlank()) {
+            String raw = s.getEventSessionPatientReferences1();
+            if (raw == null || raw.isBlank()) {
                 issues.add(row + "Missing patient reference");
-            } else if (!patientIds.contains(pid)) {
-                issues.add(row + "Unknown patient reference: " + pid);
+            } else {
+                boolean anyValid = false;
+                for (String part : raw.split("##")) {
+                    String pid = part == null ? "" : part.trim();
+                    if (pid.isEmpty()) continue;
+                    if (!patientIds.contains(pid)) {
+                        issues.add(row + "Unknown patient reference: " + pid);
+                    } else {
+                        anyValid = true;
+                    }
+                }
+                if (!anyValid) {
+                    issues.add(row + "No valid patient references found");
+                }
             }
             // Dates basic check
             if (s.getEventSessionStartDate1() != null && s.getEventSessionEndDate1() != null) {
@@ -72,4 +84,3 @@ public class ValidatorService {
         return issues;
     }
 }
-

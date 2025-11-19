@@ -16,17 +16,17 @@ public final class LinkService {
         for (EventSession s : sessions) {
             String raw = s.getEventSessionPatientReferences1();
             if (raw == null || raw.isBlank()) continue;
-            String comp = sanitizeAlphaNum(s.getCompositionId());
-            if (comp.isEmpty()) continue;
+            String eventId = sanitizeAlphaNum(s.getEventSessionId1());
+            if (eventId.isEmpty()) continue;
             for (String part : raw.split("##")) {
                 String pid = part == null ? "" : part.trim();
                 if (pid.isEmpty()) continue;
-                map.computeIfAbsent(pid, k -> new ArrayList<>()).add(comp);
+                map.computeIfAbsent(pid, k -> new ArrayList<>()).add(eventId);
             }
         }
         for (Patient p : patients) {
-            List<String> comps = map.getOrDefault(p.getPatientId(), Collections.emptyList());
-            p.setAttendedEventReferences(String.join("\n", comps));
+            List<String> refs = map.getOrDefault(p.getPatientId(), Collections.emptyList());
+            p.setAttendedEventReferences(String.join("##", refs));
         }
     }
 

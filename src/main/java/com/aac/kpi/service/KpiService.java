@@ -74,7 +74,7 @@ public final class KpiService {
 
     private static long countInPerson(String pid, List<EventSession> sessions,
                                       LocalDate fyStart, LocalDate fyEnd, boolean attendedOnly) {
-        return sessions.stream().filter(s -> pid.equals(s.getEventSessionPatientReferences1()))
+        return sessions.stream().filter(s -> sessionHasPatient(s, pid))
                 .filter(s -> eqIgnoreCase(s.getEventSessionMode1(), "In-person"))
                 .filter(s -> !attendedOnly || s.isAttendedIndicator())
                 .filter(s -> inFY(s.getEventSessionStartDate1(), fyStart, fyEnd))
@@ -83,7 +83,7 @@ public final class KpiService {
 
     private static long countPurpose(String pid, List<EventSession> sessions, String purpose,
                                      LocalDate fyStart, LocalDate fyEnd) {
-        return sessions.stream().filter(s -> pid.equals(s.getEventSessionPatientReferences1()))
+        return sessions.stream().filter(s -> sessionHasPatient(s, pid))
                 .filter(s -> eqIgnoreCase(s.getPurposeOfContact(), purpose))
                 .filter(s -> inFY(s.getEventSessionStartDate1(), fyStart, fyEnd))
                 .count();
@@ -97,7 +97,7 @@ public final class KpiService {
     private static long countAAP(String pid, List<EventSession> sessions,
                                  LocalDate fyStart, LocalDate fyEnd) {
         // Treat any attended in-person session that is not a buddying/befriending/screening contact as AAP
-        return sessions.stream().filter(s -> pid.equals(s.getEventSessionPatientReferences1()))
+        return sessions.stream().filter(s -> sessionHasPatient(s, pid))
                 .filter(s -> eqIgnoreCase(s.getEventSessionMode1(), "In-person"))
                 .filter(EventSession::isAttendedIndicator)
                 .filter(s -> inFY(s.getEventSessionStartDate1(), fyStart, fyEnd))
@@ -135,17 +135,34 @@ public final class KpiService {
     private static LocalDate parseDateTime(String s) {
         if (s == null || s.isBlank()) return null;
         try {
+            // Try plain local datetime (yyyy-MM-dd, with optional time)
             LocalDateTime dt = LocalDateTime.parse(s, DATE_TIME);
             return dt.toLocalDate();
         } catch (Exception ignored) {
             try {
-                return LocalDate.parse(s, DATE_ONLY);
-            } catch (Exception e) { return null; }
+                // Try ISO 8601 with offset, e.g. 2025-08-24T09:00:00+08:00
+                java.time.OffsetDateTime odt = java.time.OffsetDateTime.parse(s);
+                return odt.toLocalDate();
+            } catch (Exception ignored2) {
+                try {
+                    return LocalDate.parse(s, DATE_ONLY);
+                } catch (Exception e) { return null; }
+            }
         }
     }
 
     private static LocalDate parseDate(String s) {
         if (s == null || s.isBlank()) return null;
         try { return LocalDate.parse(s, DATE_ONLY); } catch (Exception e) { return null; }
+    }
+
+    private static boolean sessionHasPatient(EventSession s, String pid) {
+        if (pid == null || pid.isBlank()) return false;
+        String raw = s.getEventSessionPatientReferences1();
+        if (raw == null || raw.isBlank()) return false;
+        for (String part : raw.split("##")) {
+            if (pid.equals(part.trim())) return true;
+        }
+        return false;
     }
 }

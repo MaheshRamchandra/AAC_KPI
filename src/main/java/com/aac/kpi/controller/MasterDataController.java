@@ -79,8 +79,10 @@ public class MasterDataController {
     @FXML
     private void onRegenerateMasterData() {
         int volunteersPerCenter = promptVolunteerCount();
+        int centers = promptCenterCount();
         AppState.setVolunteersPerCenter(volunteersPerCenter);
-        MasterDataService.MasterData data = MasterDataService.generate(volunteersPerCenter);
+        AppState.setAacCenterCount(centers);
+        MasterDataService.MasterData data = MasterDataService.generate(volunteersPerCenter, centers);
         AppState.setMasterData(data);
         setMasterData(data);
         if (onRegenerate != null) onRegenerate.run();
@@ -101,6 +103,25 @@ public class MasterDataController {
             }
         }
         return AppState.getVolunteersPerCenter();
+    }
+
+    private int promptCenterCount() {
+        TextInputDialog dialog = new TextInputDialog(String.valueOf(AppState.getAacCenterCount()));
+        dialog.setTitle("Number of AAC centres");
+        dialog.setHeaderText("Specify how many AAC centres (organizations) to generate.");
+        dialog.setContentText("AAC centres:");
+        Optional<String> result = dialog.showAndWait();
+        if (result.isPresent()) {
+            try {
+                int parsed = Integer.parseInt(result.get().trim());
+                if (parsed > 0) {
+                    return parsed;
+                }
+            } catch (NumberFormatException ignored) {
+                statusLabel.setText("Invalid AAC centre count – using previous value.");
+            }
+        }
+        return AppState.getAacCenterCount();
     }
 
     private static final class MasterCenterRow {

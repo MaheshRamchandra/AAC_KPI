@@ -19,7 +19,7 @@ public final class CommonBuilderService {
                                         List<QuestionnaireResponse> questionnaires,
                                         List<Practitioner> practitioners) {
         Map<String, List<EventSession>> byPatientSessions = sessions.stream()
-                .filter(s -> s.getEventSessionPatientReferences1()!=null)
+                .filter(s -> s.getEventSessionPatientReferences1() != null)
                 .collect(Collectors.groupingBy(EventSession::getEventSessionPatientReferences1));
         Map<String, List<Encounter>> byPatientEnc = encounters.stream()
                 .filter(e -> e.getEncounterPatientReference()!=null)
@@ -31,8 +31,12 @@ public final class CommonBuilderService {
         // Sanitized maps (strip non-alphanumerics) to handle refs like "Patient/<id>"
         Map<String, List<EventSession>> byPatientSessionsSan = new HashMap<>();
         for (EventSession s : sessions) {
-            String k = sanitizeAlphaNum(s.getEventSessionPatientReferences1());
-            if (!k.isEmpty()) byPatientSessionsSan.computeIfAbsent(k, x -> new ArrayList<>()).add(s);
+            String raw = s.getEventSessionPatientReferences1();
+            if (raw == null || raw.isBlank()) continue;
+            for (String part : raw.split("##")) {
+                String k = sanitizeAlphaNum(part);
+                if (!k.isEmpty()) byPatientSessionsSan.computeIfAbsent(k, x -> new ArrayList<>()).add(s);
+            }
         }
         Map<String, List<Encounter>> byPatientEncSan = new HashMap<>();
         for (Encounter e : encounters) {
@@ -44,9 +48,6 @@ public final class CommonBuilderService {
             String k = sanitizeAlphaNum(q.getQuestionnairePatientReference());
             if (!k.isEmpty()) byPatientQSan.computeIfAbsent(k, x -> new ArrayList<>()).add(q);
         }
-
-        Map<String, Practitioner> practitionerIndex = practitioners.stream()
-                .collect(Collectors.toMap(Practitioner::getPractitionerId, p -> p, (a,b)->a));
 
         List<CommonRow> rows = new ArrayList<>();
         Map<String, Long> aacCounts = patients.stream()
@@ -66,13 +67,21 @@ public final class CommonBuilderService {
             r.setTotalClients(aacCounts.getOrDefault(p.getAac(), 0L).intValue());
             r.setStatus("final");
 
-            // author should be AAC code and display in the desired format
+            // author_value / author_display should reflect the AAC id, not a random practitioner id
             String aac = p.getAac() == null ? "" : p.getAac();
+            if (aac == null || aac.isBlank()) aac = "AAC";
             r.setAuthorValue(aac);
             String digits = aac.replaceAll("[^0-9]", "");
             r.setAuthorDisplay("Active Ageing Centre " + digits);
 
-            r.setPatientReference(p.getPatientId());
+            // patient_reference should map to patient_id, or fallback to identifier
+            String patientId = p.getPatientId();
+            String patientIdent = p.getPatientIdentifierValue();
+            String patientRef = (patientId != null && !patientId.isBlank())
+                    ? patientId
+                    : (patientIdent != null ? patientIdent : "");
+            if (patientRef.isBlank()) continue; // cannot build Common row without a patient reference
+            r.setPatientReference(patientRef);
 
             // encounters for patient (finished only) and valid purposes; join with '#'
             java.util.Set<String> validPurposes = java.util.Set.of("befriending", "buddying", "functional screening");
@@ -150,16 +159,18 @@ public final class CommonBuilderService {
             if (isBlank(r.getAsgReferralRaisedBy())) r.setAsgReferralRaisedBy("Mr Staff A");
             if (isBlank(r.getAsgReferralAcceptedBy())) r.setAsgReferralAcceptedBy("Mr Staff A");
 
-            // sessions attended
+            // sessions attended (by event_id, joined with '##')
             List<EventSession> sessList = !byPatientSessionsSan.getOrDefault(pidSan, List.of()).isEmpty()
                     ? byPatientSessionsSan.get(pidSan)
                     : byPatientSessions.getOrDefault(p.getPatientId(), List.of());
             List<String> sessionRefs = sessList.stream()
                     .filter(EventSession::isAttendedIndicator)
-                    .map(EventSession::getCompositionId)
+                    .map(EventSession::getEventSessionId1)
                     .filter(Objects::nonNull)
+                    .map(CommonBuilderService::sanitizeAlphaNum)
+                    .filter(s -> !s.isEmpty())
                     .collect(Collectors.toList());
-            r.setAttendedEventReferences(String.join("\n", sessionRefs));
+            r.setAttendedEventReferences(String.join("##", sessionRefs));
 
             // Derive programme period start/end from attended sessions (min start, max end)
             LocalDateTime minStart = null;
@@ -191,6 +202,11 @@ public final class CommonBuilderService {
                 r.setLastUpdated(maxEnd.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
                 // extension_reporting_month based on latest session
                 r.setReportingMonth(maxEnd.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM")));
+            }
+
+            // Ensure lastUpdated is never blank so Common sheet date cell is a valid date
+            if (isBlank(r.getLastUpdated())) {
+                r.setLastUpdated(ExcelWriter.nowStamp());
             }
 
             // Derive IRMS referral dates and staff from encounters if available

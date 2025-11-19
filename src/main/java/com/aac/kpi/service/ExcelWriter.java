@@ -126,17 +126,19 @@ public class ExcelWriter {
                 "KPI Group"
         };
 
-        Map<String, List<String>> patientToCompositions = new HashMap<>();
+        Map<String, List<String>> patientToEvents = new HashMap<>();
         for (EventSession s : sessions) {
             String raw = s.getEventSessionPatientReferences1();
             if (raw == null || raw.isBlank())
                 continue;
-            String compId = StringUtils.sanitizeAlphaNum(s.getCompositionId());
+            String eventId = StringUtils.sanitizeAlphaNum(s.getEventSessionId1());
+            if (eventId.isEmpty())
+                continue;
             for (String part : raw.split("##")) {
                 String pid = part == null ? "" : part.trim();
                 if (pid.isEmpty())
                     continue;
-                patientToCompositions.computeIfAbsent(pid, k -> new ArrayList<>()).add(compId);
+                patientToEvents.computeIfAbsent(pid, k -> new ArrayList<>()).add(eventId);
             }
         }
 
@@ -167,9 +169,8 @@ public class ExcelWriter {
             String[] race = RandomDataUtil.randomRace();
             row.createCell(c++).setCellValue(race[0]);
             row.createCell(c++).setCellValue(race[1]);
-            // Ensure attended_event_references contains only alphanumeric composition IDs
-            // (##-delimited)
-            List<String> comps = patientToCompositions.getOrDefault(p.getPatientId(), Collections.emptyList());
+            // Ensure attended_event_references contains only alphanumeric event IDs (##-delimited)
+            List<String> comps = patientToEvents.getOrDefault(p.getPatientId(), Collections.emptyList());
             StringBuilder sb = new StringBuilder();
             for (String id : comps) {
                 String clean = StringUtils.sanitizeAlphaNum(id);
@@ -252,6 +253,8 @@ public class ExcelWriter {
         };
 
         createHeaderRow(sheet, headers);
+        // Keep a datetime style available for any future numeric date usage, but
+        // for scenario-driven data we now store ISO+08:00 strings directly.
         CellStyle dateTimeStyleES = sheet.getWorkbook().createCellStyle();
         dateTimeStyleES.setDataFormat(sheet.getWorkbook().createDataFormat().getFormat("yyyy-MM-dd HH:mm:ss"));
         int r = 1;
@@ -265,8 +268,9 @@ public class ExcelWriter {
             row.createCell(c++).setCellValue(s.getNumberOfEventSessions());
             row.createCell(c++).setCellValue(nvl(s.getEventSessionId1()));
             row.createCell(c++).setCellValue(nvl(s.getEventSessionMode1()));
-            setDateTimeCell(row, c++, s.getEventSessionStartDate1(), dateTimeStyleES);
-            setDateTimeCell(row, c++, s.getEventSessionEndDate1(), dateTimeStyleES);
+            // Store start/end as ISO 8601 offset text (e.g. 2025-08-24T09:00:00+08:00)
+            row.createCell(c++).setCellValue(nvl(s.getEventSessionStartDate1()));
+            row.createCell(c++).setCellValue(nvl(s.getEventSessionEndDate1()));
             row.createCell(c++).setCellValue(s.getEventSessionDuration1());
             row.createCell(c++).setCellValue(nvl(s.getEventSessionVenue1()));
             row.createCell(c++).setCellValue(s.getEventSessionCapacity1());
@@ -360,7 +364,13 @@ public class ExcelWriter {
             row.createCell(c++).setCellValue(encounterId);
             row.createCell(c++).setCellValue(nvl(e.getEncounterStatus()));
             row.createCell(c++).setCellValue(nvl(e.getEncounterDisplay()));
-            setDateTimeCell(row, c++, e.getEncounterStart(), dateTimeStyleEN);
+            // encounter_start should be stored as ISO offset text (e.g. 2025-09-09T10:30:01+08:00)
+            String encStart = nvl(e.getEncounterStart());
+            if (!encStart.isBlank()) {
+                row.createCell(c++).setCellValue(toIsoOffset(encStart));
+            } else {
+                row.createCell(c++).setCellValue("");
+            }
             row.createCell(c++).setCellValue(nvl(e.getEncounterPurpose()));
             row.createCell(c++).setCellValue(nvl(e.getEncounterContactedStaffName()));
             row.createCell(c++).setCellValue(nvl(e.getEncounterReferredBy()));
@@ -663,8 +673,10 @@ public class ExcelWriter {
             row.createCell(i++).setCellValue(nvl(c.getMetaCode()));
             row.createCell(i++).setCellValue(nvl(c.getReportingMonth()));
             row.createCell(i++).setCellValue(nvl(c.getStatus()));
-            // 'date' column: ISO 8601 with timezone offset (+08:00) as text
-            row.createCell(i++).setCellValue(toIsoOffset(nvl(c.getLastUpdated())));
+            // 'date' column: ISO 8601 with +08:00 (text), e.g. 2025-05-09T06:19:37+08:00
+            String last = nvl(c.getLastUpdated());
+            if (last.isBlank()) last = nowStamp();
+            row.createCell(i++).setCellValue(toIsoOffset(last));
             row.createCell(i++).setCellValue(nvl(c.getAuthorValue()));
             row.createCell(i++).setCellValue(nvl(c.getAuthorDisplay()));
             row.createCell(i++).setCellValue(nvl(c.getResidentVolunteerStatus()));
