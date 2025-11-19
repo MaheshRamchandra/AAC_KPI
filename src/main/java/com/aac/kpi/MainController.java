@@ -5,8 +5,10 @@ import com.aac.kpi.controller.JsonExportController;
 import com.aac.kpi.controller.JsonCsvController;
 import com.aac.kpi.controller.MasterDataController;
 import com.aac.kpi.controller.PatientMasterController;
+import com.aac.kpi.controller.ScenarioBuilderController;
 import com.aac.kpi.model.CommonRow;
 import com.aac.kpi.model.EventSession;
+import com.aac.kpi.model.ScenarioTestCase;
 import com.aac.kpi.model.Patient;
 import com.aac.kpi.model.Practitioner;
 import com.aac.kpi.service.ExcelReader;
@@ -46,6 +48,7 @@ public class MainController {
     @FXML private Tab encounterTab;
     @FXML private Tab questionnaireTab;
     @FXML private Tab commonTab;
+    @FXML private Tab scenarioTab;
     @FXML private Tab jsonTab;
     @FXML private Tab jsonCsvTab;
     @FXML private Tab userGuideTab;
@@ -58,6 +61,7 @@ public class MainController {
     private final ObservableList<com.aac.kpi.model.Encounter> encounters = FXCollections.observableArrayList();
     private final ObservableList<com.aac.kpi.model.QuestionnaireResponse> questionnaires = FXCollections.observableArrayList();
     private final ObservableList<CommonRow> commonRows = FXCollections.observableArrayList();
+    private final ObservableList<ScenarioTestCase> scenarios = FXCollections.observableArrayList();
 
     private PatientMasterController patientController;
     private EventSessionController eventController;
@@ -68,6 +72,7 @@ public class MainController {
     private JsonExportController jsonController;
     private JsonCsvController jsonCsvController;
     private MasterDataController masterDataController;
+    private ScenarioBuilderController scenarioController;
 
     @FXML
     private void initialize() throws IOException {
@@ -120,6 +125,13 @@ public class MainController {
         commonController.init(commonRows, patients, sessions, encounters, practitioners, questionnaires, statusLabel);
         commonController.setClearAllHandler(this::clearAllSheets);
         commonTab.setContent(cRoot);
+
+        FXMLLoader scenarioLoader = new FXMLLoader(getClass().getResource("/com/aac/kpi/ScenarioBuilderView.fxml"));
+        Node scenarioRoot = scenarioLoader.load();
+        scenarioController = scenarioLoader.getController();
+        scenarioController.init(scenarios);
+        scenarioController.setOnGenerateExcel(this::onGenerateFromScenariosAndExport);
+        scenarioTab.setContent(scenarioRoot);
 
         FXMLLoader jsonLoader = new FXMLLoader(getClass().getResource("/com/aac/kpi/JsonExportView.fxml"));
         Node jsonRoot = jsonLoader.load();
@@ -213,6 +225,42 @@ public class MainController {
         }
     }
 
+    /**
+     * Scenario Builder entry point: generate all masters from the configured
+     * scenarios, then export to Excel in one shot.
+     */
+    private void onGenerateFromScenariosAndExport() {
+        if (scenarios.isEmpty()) {
+            new Alert(Alert.AlertType.INFORMATION, "No scenarios defined. Please add at least one scenario first.", ButtonType.OK).showAndWait();
+            return;
+        }
+        try {
+            MasterDataService.MasterData masterData = ensureMasterData();
+            var result = com.aac.kpi.service.ScenarioGenerationService.generate(new ArrayList<>(scenarios));
+
+            patients.setAll(result.patients);
+            sessions.setAll(result.sessions);
+            practitioners.setAll(result.practitioners);
+            encounters.setAll(result.encounters);
+            questionnaires.setAll(result.questionnaires);
+            commonRows.setAll(result.commonRows);
+
+            LinkService.fillPatientAttendedRefs(patients, sessions);
+
+            patientController.refreshTable();
+            eventController.refreshTable();
+            practitionerController.refreshTable();
+            encounterController.refreshTable();
+            questionnaireController.refreshTable();
+            commonController.refreshTable();
+
+            // After data is in place, run the usual export flow (Save As)
+            onExportExcelAs();
+        } catch (Exception ex) {
+            new Alert(Alert.AlertType.ERROR, "Scenario generation failed: " + ex.getMessage(), ButtonType.OK).showAndWait();
+        }
+    }
+
     @FXML
     private void onSaveExcel() {
         try {
@@ -292,6 +340,7 @@ public class MainController {
         encounters.clear();
         questionnaires.clear();
         commonRows.clear();
+        scenarios.clear();
         AppState.setCurrentExcelFile(null);
         AppState.setDirty(true);
         patientController.refreshTable();
@@ -300,6 +349,7 @@ public class MainController {
         encounterController.refreshTable();
         questionnaireController.refreshTable();
         commonController.refreshTable();
+        if (scenarioController != null) scenarioController.resetForm();
         updateStatus();
     }
 

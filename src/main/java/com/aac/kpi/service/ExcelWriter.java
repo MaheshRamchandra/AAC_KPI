@@ -74,7 +74,7 @@ public class ExcelWriter {
             CellStyle highlightStyle = createHighlightStyle(wb);
             writeMasterDataSheet(wb, masterData);
             writeCombinedCommonSheet(wb, patients, sessions, practitioners, encounters, questionnaires, commonRows,
-                    masterData);
+                    masterData, highlightStyle);
             writeEventSessionSheet(wb, sessions, highlightStyle);
             writePatientSheet(wb, patients, sessions, highlightStyle);
             writePractitionerSheet(wb, practitioners, masterData, highlightStyle);
@@ -454,7 +454,8 @@ public class ExcelWriter {
             List<com.aac.kpi.model.Encounter> encounters,
             List<com.aac.kpi.model.QuestionnaireResponse> questionnaires,
             List<com.aac.kpi.model.CommonRow> residentRows,
-            MasterData masterData) {
+            MasterData masterData,
+            CellStyle highlightStyle) {
         XSSFSheet sheet = wb.createSheet("Common");
 
         // Styles
@@ -484,7 +485,7 @@ public class ExcelWriter {
 
         // Section 2: resident_report (from residentRows/CommonRow)
         r = writeSectionTitle(sheet, r, "resident_report", titleStyle);
-        r = writeResidentReportSection(sheet, r, residentRows, columnHeaderStyle);
+        r = writeResidentReportSection(sheet, r, residentRows, columnHeaderStyle, highlightStyle);
 
         // Section 2.5: volunteer_attendance_report (between resident and event)
         r = writeSectionTitle(sheet, r, "volunteer_attendance_report", titleStyle);
@@ -629,7 +630,8 @@ public class ExcelWriter {
 
     private static int writeResidentReportSection(Sheet sheet, int rowIndex,
             List<com.aac.kpi.model.CommonRow> residents,
-            CellStyle headerStyle) {
+            CellStyle headerStyle,
+            CellStyle highlightStyle) {
         String[] headers = { "S. No", "composition_id", "version_id", "last_updated", "meta_code",
                 "extension_reporting_month", "status", "date", "author_value", "author_display",
                 "resident_volunteer_status", "cst_date", "cfs", "social_risk_factor_score", "aap_recommendation",
@@ -689,9 +691,14 @@ public class ExcelWriter {
             setDateCell(row, i++, c.getIrmsReferralAcceptedDate(), dateStyle);
             row.createCell(i++).setCellValue(nvl(c.getAsgReferralRaisedBy()));
             row.createCell(i++).setCellValue(nvl(c.getAsgReferralAcceptedBy()));
-            row.createCell(i++).setCellValue(nvl(c.getPatientReference()));
+            String patientRef = nvl(c.getPatientReference());
+            row.createCell(i++).setCellValue(patientRef);
             row.createCell(i++).setCellValue(nvl(c.getEncounterReferences()));
             row.createCell(i).setCellValue(nvl(c.getQuestionnaireReference()));
+            if (highlightStyle != null && !patientRef.isEmpty()
+                    && AppState.getHighlightedPatientIds().contains(patientRef)) {
+                applyHighlight(row, highlightStyle);
+            }
         }
         int dataEndRow = rowIndex - 1;
         applyCfsValidation(sheet, dataStartRow, dataEndRow, 12);
@@ -932,6 +939,7 @@ public class ExcelWriter {
                 wr.setCellValue("");
                 wr.setCellStyle(workingRemarksStyle);
             }
+        }
         return rowIndex;
     }
 
@@ -1407,10 +1415,25 @@ public class ExcelWriter {
         return style;
     }
 
-    private static void applyHighlight(Row row, CellStyle style) {
-        if (row == null || style == null) return;
+    private static void applyHighlight(Row row, CellStyle template) {
+        if (row == null || template == null) return;
+        Sheet sheet = row.getSheet();
+        if (sheet == null) return;
+        Workbook wb = sheet.getWorkbook();
         for (Cell cell : row) {
-            cell.setCellStyle(style);
+            CellStyle base = cell.getCellStyle();
+            CellStyle clone = wb.createCellStyle();
+            if (base != null) {
+                clone.cloneStyleFrom(base);
+            }
+            clone.setFillPattern(template.getFillPattern());
+            if (template instanceof XSSFCellStyle && clone instanceof XSSFCellStyle) {
+                XSSFColor color = ((XSSFCellStyle) template).getFillForegroundColorColor();
+                ((XSSFCellStyle) clone).setFillForegroundColor(color);
+            } else {
+                clone.setFillForegroundColor(template.getFillForegroundColor());
+            }
+            cell.setCellStyle(clone);
         }
     }
 

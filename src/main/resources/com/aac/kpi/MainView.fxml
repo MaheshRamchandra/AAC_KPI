@@ -33,6 +33,7 @@
                 <Tab fx:id="encounterTab" text="Encounter Master" closable="false" />
                 <Tab fx:id="questionnaireTab" text="QuestionnaireResponse Master" closable="false" />
                 <Tab fx:id="commonTab" text="Common" closable="false" />
+                <Tab fx:id="scenarioTab" text="Scenario Builder" closable="false" />
                 <Tab fx:id="jsonTab" text="KPI JSON" closable="false" />
                 <Tab fx:id="jsonCsvTab" text="JSON → CSV" closable="false" />
                 <Tab fx:id="userGuideTab" text="User Guide" closable="false" />

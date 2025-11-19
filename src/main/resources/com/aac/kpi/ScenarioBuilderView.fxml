@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.layout.Region?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aac.kpi.controller.ScenarioBuilderController">
+    <top>
+        <VBox spacing="10">
+            <padding>
+                <Insets top="12" right="12" bottom="12" left="12" />
+            </padding>
+            <children>
+                <HBox spacing="10">
+                    <children>
+                        <Label text="KPI Type" />
+                        <ComboBox fx:id="cbKpiType" prefWidth="180" promptText="Select KPI type" />
+                        <Label text="Total Test Cases" />
+                        <Spinner fx:id="spTotalCases" prefWidth="120" />
+                    </children>
+                </HBox>
+                <Label text="Scenario Builder: translate each tester row into a standalone configuration. Treat every value as direct input, keep datasets isolated per row, and use the loader to avoid manual typing when possible."
+                       wrapText="true" />
+                <GridPane hgap="12" vgap="8">
+                    <columnConstraints>
+                        <ColumnConstraints minWidth="150" halignment="RIGHT" />
+                        <ColumnConstraints hgrow="ALWAYS" />
+                    </columnConstraints>
+                    <Label text="Number of seniors" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+                    <TextField fx:id="tfNumberOfSeniors" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+
+                    <Label text="CFS" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+                    <TextField fx:id="tfCfs" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+
+                    <Label text="Mode of event" GridPane.rowIndex="2" GridPane.columnIndex="0" />
+                    <TextField fx:id="tfModeOfEvent" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+
+                    <Label text="AAP Session Date" GridPane.rowIndex="3" GridPane.columnIndex="0" />
+                    <TextField fx:id="tfAapSessionDate" GridPane.rowIndex="3" GridPane.columnIndex="1" />
+
+                    <Label text="No of AAP attendance in person" GridPane.rowIndex="4" GridPane.columnIndex="0" />
+                    <TextField fx:id="tfAapAttendance" GridPane.rowIndex="4" GridPane.columnIndex="1" />
+
+                    <Label text="Within or out of boundary" GridPane.rowIndex="5" GridPane.columnIndex="0" />
+                    <TextField fx:id="tfBoundary" GridPane.rowIndex="5" GridPane.columnIndex="1" />
+
+                    <Label text="Purpose of contact" GridPane.rowIndex="6" GridPane.columnIndex="0" />
+                    <TextField fx:id="tfPurpose" GridPane.rowIndex="6" GridPane.columnIndex="1" />
+
+                    <Label text="Date of contact" GridPane.rowIndex="7" GridPane.columnIndex="0" />
+                    <TextField fx:id="tfDateOfContact" GridPane.rowIndex="7" GridPane.columnIndex="1" />
+
+                    <Label text="Age" GridPane.rowIndex="8" GridPane.columnIndex="0" />
+                    <TextField fx:id="tfAge" GridPane.rowIndex="8" GridPane.columnIndex="1" />
+
+                    <Label text="Remarks / Others" GridPane.rowIndex="9" GridPane.columnIndex="0" />
+                    <TextArea fx:id="taRemarks" GridPane.rowIndex="9" GridPane.columnIndex="1" prefRowCount="3" wrapText="true" />
+                </GridPane>
+                <HBox spacing="10">
+                    <children>
+                        <Button text="Load from Excel" onAction="#onLoadFromExcel" />
+                        <Button text="Add Scenario" onAction="#onAddScenario" />
+                        <Button text="Remove Selected" onAction="#onRemoveSelected" />
+                        <Button text="Reset Fields" onAction="#onResetForm" />
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
+    </top>
+    <center>
+        <TableView fx:id="table" prefHeight="360.0">
+            <columns>
+                <TableColumn fx:id="cSeniors" text="Number of seniors" prefWidth="140" />
+                <TableColumn fx:id="cCfs" text="CFS" prefWidth="80" />
+                <TableColumn fx:id="cMode" text="Mode of event" prefWidth="120" />
+                <TableColumn fx:id="cAapDate" text="AAP Session Date" prefWidth="120" />
+                <TableColumn fx:id="cAapAttendance" text="AAP Attendance" prefWidth="120" />
+                <TableColumn fx:id="cBoundary" text="Boundary" prefWidth="140" />
+                <TableColumn fx:id="cPurpose" text="Purpose of contact" prefWidth="180" />
+                <TableColumn fx:id="cContactDate" text="Date of contact" prefWidth="120" />
+                <TableColumn fx:id="cAge" text="Age" prefWidth="80" />
+                <TableColumn fx:id="cRemarks" text="Remarks / Others" prefWidth="200" />
+            </columns>
+        </TableView>
+    </center>
+    <bottom>
+        <HBox spacing="10">
+            <padding>
+                <Insets top="8" right="8" bottom="8" left="8" />
+            </padding>
+            <children>
+                <Label fx:id="summaryLabel" text="0 scenarios defined" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Button text="Generate Excel" onAction="#onGenerateExcel" />
+            </children>
+        </HBox>
+    </bottom>
+</BorderPane>
