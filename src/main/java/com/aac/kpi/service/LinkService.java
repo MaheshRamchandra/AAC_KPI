@@ -14,11 +14,15 @@ public final class LinkService {
     public static void fillPatientAttendedRefs(List<Patient> patients, List<EventSession> sessions) {
         Map<String, List<String>> map = new HashMap<>();
         for (EventSession s : sessions) {
-            String pid = s.getEventSessionPatientReferences1();
-            if (pid == null || pid.isBlank()) continue;
+            String raw = s.getEventSessionPatientReferences1();
+            if (raw == null || raw.isBlank()) continue;
             String comp = sanitizeAlphaNum(s.getCompositionId());
             if (comp.isEmpty()) continue;
-            map.computeIfAbsent(pid, k -> new ArrayList<>()).add(comp);
+            for (String part : raw.split("##")) {
+                String pid = part == null ? "" : part.trim();
+                if (pid.isEmpty()) continue;
+                map.computeIfAbsent(pid, k -> new ArrayList<>()).add(comp);
+            }
         }
         for (Patient p : patients) {
             List<String> comps = map.getOrDefault(p.getPatientId(), Collections.emptyList());
@@ -31,4 +35,3 @@ public final class LinkService {
         return s.replaceAll("[^A-Za-z0-9]", "");
     }
 }
-

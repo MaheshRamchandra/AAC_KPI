@@ -205,7 +205,7 @@ public class CommonController {
         return dialog.showAndWait();
     }
 
-    private enum CfsSelection {
+    public enum CfsSelection {
         GROUP1_RANGE("Group 1 — 1-3", "1-3", 3),
         GROUP2_RANGE("Group 2 — 4-5", "4-5", 4),
         GROUP2_4("Group 2 — 4", "4", 4),

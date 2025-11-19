@@ -198,7 +198,7 @@ public class EncounterMasterController {
         return dialog.showAndWait();
     }
 
-    private enum PurposeSelection {
+    public enum PurposeSelection {
         BEFRIENDING_CAPITAL("Befriending"),
         BEFRIENDING_LOWER("befriending"),
         BUDDYING_LOWER("buddying"),

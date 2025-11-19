@@ -305,7 +305,7 @@ public class EventSessionController {
         return dialog.showAndWait();
     }
 
-    private enum ModeSelection {
+    public enum ModeSelection {
         IN_PERSON("In-person"),
         FACE_TO_FACE("Face-to-Face"),
         F2F("F2F"),

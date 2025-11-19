@@ -31,10 +31,10 @@
                     <TextField fx:id="tfNumberOfSeniors" GridPane.rowIndex="0" GridPane.columnIndex="1" />
 
                     <Label text="CFS" GridPane.rowIndex="1" GridPane.columnIndex="0" />
-                    <TextField fx:id="tfCfs" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+                    <ComboBox fx:id="cbCfs" GridPane.rowIndex="1" GridPane.columnIndex="1" editable="true" />
 
                     <Label text="Mode of event" GridPane.rowIndex="2" GridPane.columnIndex="0" />
-                    <TextField fx:id="tfModeOfEvent" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+                    <ComboBox fx:id="cbModeOfEvent" GridPane.rowIndex="2" GridPane.columnIndex="1" editable="true" />
 
                     <Label text="AAP Session Date" GridPane.rowIndex="3" GridPane.columnIndex="0" />
                     <TextField fx:id="tfAapSessionDate" GridPane.rowIndex="3" GridPane.columnIndex="1" />
@@ -43,10 +43,10 @@
                     <TextField fx:id="tfAapAttendance" GridPane.rowIndex="4" GridPane.columnIndex="1" />
 
                     <Label text="Within or out of boundary" GridPane.rowIndex="5" GridPane.columnIndex="0" />
-                    <TextField fx:id="tfBoundary" GridPane.rowIndex="5" GridPane.columnIndex="1" />
+                    <ComboBox fx:id="cbBoundary" GridPane.rowIndex="5" GridPane.columnIndex="1" editable="true" />
 
                     <Label text="Purpose of contact" GridPane.rowIndex="6" GridPane.columnIndex="0" />
-                    <TextField fx:id="tfPurpose" GridPane.rowIndex="6" GridPane.columnIndex="1" />
+                    <ComboBox fx:id="cbPurpose" GridPane.rowIndex="6" GridPane.columnIndex="1" editable="true" />
 
                     <Label text="Date of contact" GridPane.rowIndex="7" GridPane.columnIndex="0" />
                     <TextField fx:id="tfDateOfContact" GridPane.rowIndex="7" GridPane.columnIndex="1" />

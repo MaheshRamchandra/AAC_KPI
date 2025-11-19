@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
  * as direct inputs (no KPI logic beyond simple counts).
  */
 public final class ScenarioGenerationService {
+    private static final Random RND = new Random();
 
     public static final class Result {
         public final List<Patient> patients;
@@ -54,6 +55,24 @@ public final class ScenarioGenerationService {
         if (scenarios == null || scenarios.isEmpty()) {
             return new Result(List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
+        // Ensure master data exists so we can derive
+        // AAC centres and their served postal codes.
+        MasterDataService.MasterData masterData = AppState.getMasterData();
+        if (masterData == null) {
+            masterData = MasterDataService.generate();
+            AppState.setMasterData(masterData);
+        }
+
+        Map<String, Set<String>> aacPostalCodes = new HashMap<>();
+        Set<String> allPostalCodes = new HashSet<>();
+        for (MasterDataService.Volunteer v : masterData.getVolunteers()) {
+            String aacId = v.aacCenterId();
+            String postal = v.postalCode();
+            if (aacId == null || aacId.isBlank() || postal == null || postal.isBlank()) continue;
+            aacPostalCodes.computeIfAbsent(aacId, k -> new HashSet<>()).add(postal);
+            allPostalCodes.add(postal);
+        }
+
         List<Patient> patients = new ArrayList<>();
         List<EventSession> sessions = new ArrayList<>();
         List<Encounter> encounters = new ArrayList<>();
@@ -68,7 +87,8 @@ public final class ScenarioGenerationService {
         AppState.clearHighlightedPractitionerIds();
 
         for (ScenarioTestCase scenario : scenarios) {
-            generateForScenario(scenario, patients, sessions, encounters, questionnaires, practitioners);
+            generateForScenario(scenario, patients, sessions, encounters, questionnaires, practitioners,
+                    masterData, aacPostalCodes, allPostalCodes);
         }
 
         // Build Common rows from the aggregated lists; Common rows stay
@@ -85,7 +105,10 @@ public final class ScenarioGenerationService {
                                             List<EventSession> sessions,
                                             List<Encounter> encounters,
                                             List<QuestionnaireResponse> questionnaires,
-                                            List<Practitioner> practitioners) {
+                                            List<Practitioner> practitioners,
+                                            MasterDataService.MasterData masterData,
+                                            Map<String, Set<String>> aacPostalCodes,
+                                            Set<String> allPostalCodes) {
         if (scenario == null) return;
         int numberOfSeniors = parsePositiveInt(scenario.getNumberOfSeniors(), 0);
         if (numberOfSeniors <= 0) return;
@@ -105,6 +128,18 @@ public final class ScenarioGenerationService {
         LocalDate baseDate = contactDate != null ? contactDate
                 : (aapDate != null ? aapDate : LocalDate.now());
 
+        // Pick one AAC centre for this scenario
+        MasterDataService.AacCenter selectedCenter = null;
+        List<MasterDataService.AacCenter> centers = masterData != null ? masterData.getAacCenters() : List.of();
+        if (!centers.isEmpty()) {
+            selectedCenter = centers.get(RND.nextInt(centers.size()));
+        }
+        String aacId = selectedCenter != null ? selectedCenter.aacCenterId() : RandomDataUtil.randomAAC();
+        Set<String> servedPostals = aacPostalCodes.getOrDefault(aacId, Set.of());
+
+        boolean isWithin = boundary.toLowerCase(Locale.ENGLISH).contains("within");
+        boolean isOutside = boundary.toLowerCase(Locale.ENGLISH).contains("out");
+
         List<Patient> scenarioPatients = new ArrayList<>();
         for (int i = 0; i < numberOfSeniors; i++) {
             Patient p = new Patient();
@@ -113,11 +148,17 @@ public final class ScenarioGenerationService {
             // keep identifiers offline/dummy; no Selenium
             p.setPatientIdentifierValue(NRICGeneratorUtil.generateFakeNRIC());
             p.setPatientBirthdate(RandomDataUtil.dobForExactAge(age));
-            p.setPatientPostalCode(RandomDataUtil.randomPostal6());
+            String postal;
+            if (isOutside) {
+                postal = chooseOutsidePostal(servedPostals, allPostalCodes);
+            } else {
+                postal = chooseWithinPostal(servedPostals, allPostalCodes);
+            }
+            p.setPatientPostalCode(postal);
             p.setWorkingRemarks("Generated from Scenario Builder");
             p.setGroup(RandomDataUtil.randomGroup());
             p.setType(boundary);
-            p.setAac(RandomDataUtil.randomAAC());
+            p.setAac(aacId);
             p.setCfs(randomIntInRange(cfsRange));
             scenarioPatients.add(p);
             patients.add(p);
@@ -126,7 +167,7 @@ public final class ScenarioGenerationService {
             }
 
             Practitioner pr = new Practitioner();
-            String prId = "VOL-" + RandomDataUtil.uuid32().substring(0, 8).toUpperCase(Locale.ROOT);
+            String prId = RandomDataUtil.uuid32();
             pr.setPractitionerId(prId);
             pr.setPractitionerIdentifierValue(NRICGeneratorUtil.generateFakeNRIC());
             pr.setPractitionerIdentifierSystem("http://ihis.sg/identifier/aac-staff-id");
@@ -170,23 +211,30 @@ public final class ScenarioGenerationService {
         String startText = RandomDataUtil.formatEventDateTime(startBase);
         String endText = RandomDataUtil.formatEventDateTime(endBase);
 
-        for (Patient p : patients) {
-            for (int i = 0; i < aapAttendanceCount; i++) {
-                EventSession s = new EventSession();
-                s.setCompositionId(RandomDataUtil.uuid32());
-                s.setNumberOfEventSessions(1);
-                s.setEventSessionId1(RandomDataUtil.randomEventId());
-                s.setEventSessionMode1(modeOfEvent.isBlank() ? "In-Person" : modeOfEvent);
-                s.setEventSessionStartDate1(startText);
-                s.setEventSessionEndDate1(endText);
-                s.setEventSessionDuration1(durationMinutes);
-                s.setEventSessionVenue1(RandomDataUtil.randomVenue());
-                s.setEventSessionCapacity1(RandomDataUtil.randomCapacity());
-                s.setEventSessionPatientReferences1(p.getPatientId());
-                s.setAttendedIndicator(true);
-                s.setPurposeOfContact(purpose);
-                list.add(s);
+        List<String> ids = new ArrayList<>();
+        for (Patient p : patients) ids.add(p.getPatientId());
+        int n = ids.size();
+
+        for (int row = 0; row < n; row++) {
+            EventSession s = new EventSession();
+            s.setCompositionId(RandomDataUtil.uuid32());
+            s.setNumberOfEventSessions(1);
+            s.setEventSessionId1(RandomDataUtil.randomEventId());
+            s.setEventSessionMode1(modeOfEvent.isBlank() ? "In-person" : modeOfEvent);
+            s.setEventSessionStartDate1(startText);
+            s.setEventSessionEndDate1(endText);
+            s.setEventSessionDuration1(durationMinutes);
+            s.setEventSessionVenue1(RandomDataUtil.randomVenue());
+            s.setEventSessionCapacity1(Math.max(aapAttendanceCount, RandomDataUtil.randomCapacity()));
+            List<String> refs = new ArrayList<>();
+            for (int k = 0; k < aapAttendanceCount; k++) {
+                String pid = ids.get((row * aapAttendanceCount + k) % n);
+                refs.add(pid);
             }
+            s.setEventSessionPatientReferences1(String.join("##", refs));
+            s.setAttendedIndicator(true);
+            s.setPurposeOfContact(purpose);
+            list.add(s);
         }
         if (!list.isEmpty()) {
             AppState.addHighlightedEventSessionCompositionId(
@@ -325,5 +373,40 @@ public final class ScenarioGenerationService {
             this.min = min;
             this.max = max;
         }
+    }
+
+    private static String chooseWithinPostal(Set<String> servedPostals, Set<String> allPostals) {
+        if (servedPostals != null && !servedPostals.isEmpty()) {
+            int idx = RND.nextInt(servedPostals.size());
+            return servedPostals.stream().skip(idx).findFirst().orElse(RandomDataUtil.randomPostal6());
+        }
+        if (allPostals != null && !allPostals.isEmpty()) {
+            int idx = RND.nextInt(allPostals.size());
+            return allPostals.stream().skip(idx).findFirst().orElse(RandomDataUtil.randomPostal6());
+        }
+        return RandomDataUtil.randomPostal6();
+    }
+
+    private static String chooseOutsidePostal(Set<String> servedPostals, Set<String> allPostals) {
+        // First try picking from global known postals that are not in this AAC's list
+        if (allPostals != null && !allPostals.isEmpty()) {
+            List<String> candidates = new ArrayList<>();
+            for (String p : allPostals) {
+                if (servedPostals == null || !servedPostals.contains(p)) {
+                    candidates.add(p);
+                }
+            }
+            if (!candidates.isEmpty()) {
+                return candidates.get(RND.nextInt(candidates.size()));
+            }
+        }
+        // Fallback: random until it falls outside the served set
+        for (int i = 0; i < 1000; i++) {
+            String p = RandomDataUtil.randomPostal6();
+            if (servedPostals == null || !servedPostals.contains(p)) {
+                return p;
+            }
+        }
+        return RandomDataUtil.randomPostal6();
     }
 }

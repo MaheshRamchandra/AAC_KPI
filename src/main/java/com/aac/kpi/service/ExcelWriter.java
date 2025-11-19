@@ -128,11 +128,16 @@ public class ExcelWriter {
 
         Map<String, List<String>> patientToCompositions = new HashMap<>();
         for (EventSession s : sessions) {
-            String pid = s.getEventSessionPatientReferences1();
-            if (pid == null || pid.isBlank())
+            String raw = s.getEventSessionPatientReferences1();
+            if (raw == null || raw.isBlank())
                 continue;
             String compId = StringUtils.sanitizeAlphaNum(s.getCompositionId());
-            patientToCompositions.computeIfAbsent(pid, k -> new ArrayList<>()).add(compId);
+            for (String part : raw.split("##")) {
+                String pid = part == null ? "" : part.trim();
+                if (pid.isEmpty())
+                    continue;
+                patientToCompositions.computeIfAbsent(pid, k -> new ArrayList<>()).add(compId);
+            }
         }
 
         createHeaderRow(sheet, headers);
@@ -489,7 +494,7 @@ public class ExcelWriter {
 
         // Section 2.5: volunteer_attendance_report (between resident and event)
         r = writeSectionTitle(sheet, r, "volunteer_attendance_report", titleStyle);
-        r = writeVolunteerAttendanceReportSection(sheet, r, patients, masterData, columnHeaderStyle);
+        r = writeVolunteerAttendanceReportSection(sheet, r, patients, practitioners, masterData, columnHeaderStyle);
 
         // Section 3: event_report
         r = writeSectionTitle(sheet, r, "event_report", titleStyle);
@@ -591,8 +596,6 @@ public class ExcelWriter {
             if (dt != null)
                 latestByAac.merge(aac, dt, (a, b) -> a.isAfter(b) ? a : b);
         }
-        Map<String, List<MasterDataService.Volunteer>> volunteersByAac = masterData.getVolunteers().stream()
-                .collect(Collectors.groupingBy(MasterDataService.Volunteer::aacCenterId));
         List<String> practitionerIds = practitioners.stream()
                 .map(com.aac.kpi.model.Practitioner::getPractitionerId)
                 .filter(Objects::nonNull).toList();
@@ -616,13 +619,11 @@ public class ExcelWriter {
             row.createCell(i++).setCellValue(nowIsoOffset("+08:00"));
             row.createCell(i++).setCellValue(aac);
             row.createCell(i++).setCellValue(center.aacCenterName());
-            List<String> volunteerRefs = volunteersByAac.getOrDefault(aac, List.of()).stream()
-                    .map(MasterDataService.Volunteer::volunteerId)
-                    .filter(Objects::nonNull)
-                    .toList();
-            List<String> references = !volunteerRefs.isEmpty()
-                    ? volunteerRefs
-                    : selectPractitionerSubset(practitionerIds, sno, Math.max(1, Math.min(3, practitionerIds.size())));
+            List<String> references = selectPractitionerSubset(
+                    practitionerIds,
+                    sno,
+                    Math.max(1, Math.min(3, practitionerIds.size()))
+            );
             row.createCell(i).setCellValue(String.join("##", references));
         }
         return rowIndex; // no blank line between sections
@@ -809,9 +810,13 @@ public class ExcelWriter {
             for (EventSession s : list) {
                 if (!s.isAttendedIndicator())
                     continue;
-                String pid = nvl(s.getEventSessionPatientReferences1());
-                if (!pid.isBlank())
-                    attendeeIds.add(StringUtils.sanitizeAlphaNum(pid));
+                String raw = nvl(s.getEventSessionPatientReferences1());
+                if (raw.isBlank()) continue;
+                for (String part : raw.split("##")) {
+                    String clean = StringUtils.sanitizeAlphaNum(part);
+                    if (!clean.isBlank())
+                        attendeeIds.add(clean);
+                }
             }
 
             // Compute event_type by majority of attendees' KPI type (if available)
@@ -892,9 +897,14 @@ public class ExcelWriter {
             for (EventSession session : list) {
                 LinkedHashSet<String> sessionRefs = new LinkedHashSet<>();
                 if (session.isAttendedIndicator()) {
-                    String pid = nvl(session.getEventSessionPatientReferences1());
-                    if (!pid.isBlank())
-                        sessionRefs.add(StringUtils.sanitizeAlphaNum(pid));
+                    String raw = nvl(session.getEventSessionPatientReferences1());
+                    if (!raw.isBlank()) {
+                        for (String part : raw.split("##")) {
+                            String clean = StringUtils.sanitizeAlphaNum(part);
+                            if (!clean.isBlank())
+                                sessionRefs.add(clean);
+                        }
+                    }
                 }
                 String joinedRefs = String.join("##", sessionRefs);
                 int totalRefs = sessionRefs.size();
@@ -945,6 +955,7 @@ public class ExcelWriter {
 
     private static int writeVolunteerAttendanceReportSection(Sheet sheet, int rowIndex,
             List<Patient> patients,
+            List<com.aac.kpi.model.Practitioner> practitioners,
             MasterData masterData,
             CellStyle headerStyle) {
         int requested = com.aac.kpi.service.AppState.getVolunteerPractitionerCount();
@@ -967,18 +978,21 @@ public class ExcelWriter {
         dateTimeStyle.setDataFormat(sheet.getWorkbook().createDataFormat().getFormat("yyyy-MM-dd HH:mm:ss"));
 
         List<MasterDataService.AacCenter> centers = masterData.getAacCenters();
+        java.util.List<String> practitionerIds = practitioners == null ? java.util.List.of()
+                : practitioners.stream()
+                        .map(com.aac.kpi.model.Practitioner::getPractitionerId)
+                        .filter(id -> id != null && !id.isBlank())
+                        .toList();
         int sno = 1;
         for (MasterDataService.AacCenter center : centers) {
-            List<String> volunteerIds = masterData.getVolunteerIds(center.aacCenterId());
-            if (volunteerIds.isEmpty()) {
-                rowIndex = writeAttendanceRow(sheet, rowIndex, dateStyle, dateTimeStyle, sno++,
-                        center, List.of(), patients, requested);
+            java.util.List<String> refs;
+            if (practitionerIds.isEmpty()) {
+                refs = java.util.List.of();
             } else {
-                for (String volId : volunteerIds) {
-                    rowIndex = writeAttendanceRow(sheet, rowIndex, dateStyle, dateTimeStyle, sno++,
-                            center, List.of(volId), patients, requested);
-                }
+                refs = selectPractitionerSubset(practitionerIds, sno, requested);
             }
+            rowIndex = writeAttendanceRow(sheet, rowIndex, dateStyle, dateTimeStyle, sno++,
+                    center, refs, patients, requested);
         }
         return rowIndex;
     }

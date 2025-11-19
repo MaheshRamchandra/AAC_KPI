@@ -12,18 +12,20 @@ import javafx.stage.FileChooser;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.SelectionMode;
 
+import com.aac.kpi.controller.CommonController.CfsSelection;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
 public class ScenarioBuilderController {
     @FXML private TextField tfNumberOfSeniors;
-    @FXML private TextField tfCfs;
-    @FXML private TextField tfModeOfEvent;
+    @FXML private ComboBox<String> cbCfs;
+    @FXML private ComboBox<String> cbModeOfEvent;
     @FXML private TextField tfAapSessionDate;
     @FXML private TextField tfAapAttendance;
-    @FXML private TextField tfBoundary;
-    @FXML private TextField tfPurpose;
+    @FXML private ComboBox<String> cbBoundary;
+    @FXML private ComboBox<String> cbPurpose;
     @FXML private TextField tfDateOfContact;
     @FXML private TextField tfAge;
     @FXML private TextArea taRemarks;
@@ -56,6 +58,29 @@ public class ScenarioBuilderController {
         }
         if (spTotalCases != null) {
             spTotalCases.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 1000, 1));
+        }
+        if (cbCfs != null) {
+            cbCfs.getItems().clear();
+            for (CommonController.CfsSelection c : CommonController.CfsSelection.values()) {
+                cbCfs.getItems().add(c.getLabel());
+            }
+        }
+        if (cbModeOfEvent != null) {
+            cbModeOfEvent.getItems().setAll(
+                    EventSessionController.ModeSelection.IN_PERSON.getValue(),
+                    EventSessionController.ModeSelection.FACE_TO_FACE.getValue(),
+                    EventSessionController.ModeSelection.F2F.getValue(),
+                    EventSessionController.ModeSelection.IN_PERSON_LOWER.getValue()
+            );
+        }
+        if (cbBoundary != null) {
+            cbBoundary.getItems().setAll("Within", "Outside", "Out of service boundary");
+        }
+        if (cbPurpose != null) {
+            cbPurpose.getItems().clear();
+            for (EncounterMasterController.PurposeSelection p : EncounterMasterController.PurposeSelection.values()) {
+                cbPurpose.getItems().add(p.getValue());
+            }
         }
         cSeniors.setCellValueFactory(new PropertyValueFactory<>("numberOfSeniors"));
         cCfs.setCellValueFactory(new PropertyValueFactory<>("cfs"));
@@ -128,12 +153,12 @@ public class ScenarioBuilderController {
         if (scenarios == null) return;
         ScenarioTestCase scenario = new ScenarioTestCase();
         scenario.setNumberOfSeniors(getTrimmed(tfNumberOfSeniors));
-        scenario.setCfs(getTrimmed(tfCfs));
-        scenario.setModeOfEvent(getTrimmed(tfModeOfEvent));
+        scenario.setCfs(getComboValue(cbCfs));
+        scenario.setModeOfEvent(getComboValue(cbModeOfEvent));
         scenario.setAapSessionDate(getTrimmed(tfAapSessionDate));
         scenario.setNumberOfAapAttendance(getTrimmed(tfAapAttendance));
-        scenario.setWithinBoundary(getTrimmed(tfBoundary));
-        scenario.setPurposeOfContact(getTrimmed(tfPurpose));
+        scenario.setWithinBoundary(getComboValue(cbBoundary));
+        scenario.setPurposeOfContact(getComboValue(cbPurpose));
         scenario.setDateOfContact(getTrimmed(tfDateOfContact));
         scenario.setAge(getTrimmed(tfAge));
         scenario.setRemarks(getTrimmed(taRemarks));
@@ -171,12 +196,32 @@ public class ScenarioBuilderController {
 
     private void resetFormFields() {
         if (tfNumberOfSeniors != null) tfNumberOfSeniors.clear();
-        if (tfCfs != null) tfCfs.clear();
-        if (tfModeOfEvent != null) tfModeOfEvent.clear();
+        if (cbCfs != null) {
+            cbCfs.getSelectionModel().clearSelection();
+            if (cbCfs.isEditable() && cbCfs.getEditor() != null) {
+                cbCfs.getEditor().clear();
+            }
+        }
+        if (cbModeOfEvent != null) {
+            cbModeOfEvent.getSelectionModel().clearSelection();
+            if (cbModeOfEvent.isEditable() && cbModeOfEvent.getEditor() != null) {
+                cbModeOfEvent.getEditor().clear();
+            }
+        }
         if (tfAapSessionDate != null) tfAapSessionDate.clear();
         if (tfAapAttendance != null) tfAapAttendance.clear();
-        if (tfBoundary != null) tfBoundary.clear();
-        if (tfPurpose != null) tfPurpose.clear();
+        if (cbBoundary != null) {
+            cbBoundary.getSelectionModel().clearSelection();
+            if (cbBoundary.isEditable() && cbBoundary.getEditor() != null) {
+                cbBoundary.getEditor().clear();
+            }
+        }
+        if (cbPurpose != null) {
+            cbPurpose.getSelectionModel().clearSelection();
+            if (cbPurpose.isEditable() && cbPurpose.getEditor() != null) {
+                cbPurpose.getEditor().clear();
+            }
+        }
         if (tfDateOfContact != null) tfDateOfContact.clear();
         if (tfAge != null) tfAge.clear();
         if (taRemarks != null) taRemarks.clear();
@@ -189,6 +234,16 @@ public class ScenarioBuilderController {
     private String getTrimmed(TextInputControl control) {
         if (control == null) return "";
         return control.getText() == null ? "" : control.getText().trim();
+    }
+
+    private String getComboValue(ComboBox<String> combo) {
+        if (combo == null) return "";
+        if (combo.isEditable() && combo.getEditor() != null) {
+            String text = combo.getEditor().getText();
+            if (text != null && !text.trim().isEmpty()) return text.trim();
+        }
+        String sel = combo.getValue();
+        return sel == null ? "" : sel.trim();
     }
 
     private void showAlert(Alert.AlertType type, String header, String content) {
