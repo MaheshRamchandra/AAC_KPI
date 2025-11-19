@@ -727,16 +727,19 @@ public class ExcelWriter {
         }
 
         int maxRefs = 0;
-        for (Map.Entry<String, List<EventSession>> e : byEventId.entrySet()) {
-            LinkedHashSet<String> attendeeIds = new LinkedHashSet<>();
-            for (EventSession s : e.getValue()) {
-                if (!s.isAttendedIndicator())
-                    continue;
-                String pid = nvl(s.getEventSessionPatientReferences1());
-                if (!pid.isBlank())
-                    attendeeIds.add(StringUtils.sanitizeAlphaNum(pid));
+        for (EventSession s : sessions) {
+            if (!s.isAttendedIndicator())
+                continue;
+            String pid = nvl(s.getEventSessionPatientReferences1());
+            if (!pid.isBlank()) {
+                Set<String> sanitized = new LinkedHashSet<>();
+                for (String part : pid.split("##")) {
+                    String clean = StringUtils.sanitizeAlphaNum(part);
+                    if (!clean.isBlank())
+                        sanitized.add(clean);
+                }
+                maxRefs = Math.max(maxRefs, sanitized.size());
             }
-            maxRefs = Math.max(maxRefs, attendeeIds.size());
         }
 
         List<String> headerList = new ArrayList<>(List.of(
@@ -873,66 +876,62 @@ public class ExcelWriter {
             // number_of_event_sessions = count rows for this event_id
             int sessionsCount = list.size();
 
-            // patient_references joined with '##'
-            String joinedRefs = String.join("##", attendeeIds);
-            int totalRefs = attendeeIds.size();
-
-            // infer event_name from id or venue
             String eventName = eventIdRaw.replaceAll("[0-9-]", "");
-            if (eventName.isBlank()) {
+            if (eventName.isBlank() && !list.isEmpty()) {
                 String venue = list.get(0).getEventSessionVenue1();
                 eventName = nvl(venue);
             }
 
-            Row row = sheet.createRow(rowIndex++);
-            int i = 0;
-            row.createCell(i++).setCellValue("event_report_" + sno++);
-            // composition_id from Event Sessions (Master) composition_id
-            String compFromSession = list.isEmpty() ? "" : StringUtils.sanitizeAlphaNum(nvl(list.get(0).getCompositionId()));
-            row.createCell(i++).setCellValue(compFromSession);
-            row.createCell(i++).setCellValue(1);
-            row.createCell(i++).setCellValue(nowIsoOffset("+08:00"));
-            row.createCell(i++).setCellValue(RandomDataUtil.uuid32().substring(0, 20));
-            row.createCell(i++).setCellValue(earliest != null ? earliest.format(monthFmt) : "");
-            row.createCell(i++).setCellValue("completed");
-            {
-                // 'date' must be ISO 8601 with +08:00
-                String dtStr = earliest != null ? earliest.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-                        : "";
-                row.createCell(i++).setCellValue(dtStr.isEmpty() ? "" : toIsoOffset(dtStr));
-            }
-            row.createCell(i++).setCellValue(eventAuthorValue);
-            row.createCell(i++).setCellValue(eventAuthorDisplay);
-            row.createCell(i++).setCellValue(StringUtils.sanitizeAlphaNum(eventIdRaw));
-            row.createCell(i++).setCellValue(eventName);
-            // Ensure event_type is not blank; default to "Physical activity"
-            row.createCell(i++)
-                    .setCellValue(eventType == null || eventType.isBlank() ? "Physical activity" : eventType);
-            row.createCell(i++).setCellValue("Community Well-Being"); // domain
-            // event_target_attendees should be string like 'AAC Robust'
-            // event_target_attendees must not be blank; default to 'AAC Robust' if unknown
-            String targetAttendees = "AAC " + (eventType.isBlank() ? "Robust" : eventType);
-            row.createCell(i++).setCellValue(targetAttendees);
-            row.createCell(i++).setCellValue(eventCategory);
-            row.createCell(i++).setCellValue(StringUtils.sanitizeAlphaNum(aapProvider));
-            row.createCell(i++).setCellValue(minReq);
-            row.createCell(i++).setCellValue(eventIsGui);
-            row.createCell(i++).setCellValue(guiPartner);
-            row.createCell(i++).setCellValue(sessionsCount);
-            row.createCell(i++).setCellValue(joinedRefs);
-            row.createCell(i++).setCellValue(totalRefs);
+            for (EventSession session : list) {
+                LinkedHashSet<String> sessionRefs = new LinkedHashSet<>();
+                if (session.isAttendedIndicator()) {
+                    String pid = nvl(session.getEventSessionPatientReferences1());
+                    if (!pid.isBlank())
+                        sessionRefs.add(StringUtils.sanitizeAlphaNum(pid));
+                }
+                String joinedRefs = String.join("##", sessionRefs);
+                int totalRefs = sessionRefs.size();
 
-            // Booleans for attendees: only up to maxRefs columns included in header
-            for (int idx = 0; idx < Math.max(1, maxRefs); idx++) {
-                boolean present = idx < totalRefs;
-                row.createCell(i++).setCellValue(present ? "TRUE" : "");
-            }
-            // Working Remarks (blank) with highlight
-            Cell wr = row.createCell(i);
-            wr.setCellValue("");
-            wr.setCellStyle(workingRemarksStyle);
+                Row row = sheet.createRow(rowIndex++);
+                int i = 0;
+                row.createCell(i++).setCellValue("event_report_" + sno++);
+                String compFromSession = StringUtils.sanitizeAlphaNum(nvl(session.getCompositionId()));
+                row.createCell(i++).setCellValue(compFromSession);
+                row.createCell(i++).setCellValue(1);
+                row.createCell(i++).setCellValue(nowIsoOffset("+08:00"));
+                row.createCell(i++).setCellValue(RandomDataUtil.uuid32().substring(0, 20));
+                row.createCell(i++).setCellValue(earliest != null ? earliest.format(monthFmt) : "");
+                row.createCell(i++).setCellValue("completed");
+                {
+                    String dtStr = earliest != null ? earliest.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "";
+                    row.createCell(i++).setCellValue(dtStr.isEmpty() ? "" : toIsoOffset(dtStr));
+                }
+                row.createCell(i++).setCellValue(eventAuthorValue);
+                row.createCell(i++).setCellValue(eventAuthorDisplay);
+                row.createCell(i++).setCellValue(StringUtils.sanitizeAlphaNum(eventIdRaw));
+                row.createCell(i++).setCellValue(eventName);
+                row.createCell(i++)
+                        .setCellValue(eventType == null || eventType.isBlank() ? "Physical activity" : eventType);
+                row.createCell(i++).setCellValue("Community Well-Being");
+                String targetAttendees = "AAC " + (eventType.isBlank() ? "Robust" : eventType);
+                row.createCell(i++).setCellValue(targetAttendees);
+                row.createCell(i++).setCellValue(eventCategory);
+                row.createCell(i++).setCellValue(StringUtils.sanitizeAlphaNum(aapProvider));
+                row.createCell(i++).setCellValue(minReq);
+                row.createCell(i++).setCellValue(eventIsGui);
+                row.createCell(i++).setCellValue(guiPartner);
+                row.createCell(i++).setCellValue(sessionsCount);
+                row.createCell(i++).setCellValue(joinedRefs);
+                row.createCell(i++).setCellValue(totalRefs);
 
-        }
+                for (int idx = 0; idx < Math.max(1, maxRefs); idx++) {
+                    boolean present = idx < totalRefs;
+                    row.createCell(i++).setCellValue(present ? "TRUE" : "");
+                }
+                Cell wr = row.createCell(i);
+                wr.setCellValue("");
+                wr.setCellStyle(workingRemarksStyle);
+            }
         return rowIndex;
     }
 
