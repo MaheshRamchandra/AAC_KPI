@@ -59,9 +59,18 @@ public class ScenarioReader {
     }
 
     private static boolean isEmptyRow(ScenarioTestCase scenario) {
-        boolean idMissing = scenario.getId() == null || scenario.getId().isBlank();
-        boolean titleMissing = scenario.getTitle() == null || scenario.getTitle().isBlank();
-        return idMissing && titleMissing;
+        // Treat a row as a usable scenario if any of the core
+        // Scenario Builder columns has data. This allows sheets
+        // without ID/Title to still be recognised as test cases.
+        return isBlank(scenario.getNumberOfSeniors())
+                && isBlank(scenario.getCfs())
+                && isBlank(scenario.getModeOfEvent())
+                && isBlank(scenario.getAapSessionDate())
+                && isBlank(scenario.getNumberOfAapAttendance())
+                && isBlank(scenario.getWithinBoundary())
+                && isBlank(scenario.getPurposeOfContact())
+                && isBlank(scenario.getDateOfContact())
+                && isBlank(scenario.getAge());
     }
 
     private static Sheet findSheet(XSSFWorkbook workbook) {
@@ -86,10 +95,22 @@ public class ScenarioReader {
 
     private static String getValue(Row row, Map<String, Integer> headerIndex, String... keys) {
         for (String key : keys) {
-            Integer idx = headerIndex.get(normalize(key));
+            String normKey = normalize(key);
+            // First try exact normalized header match
+            Integer idx = headerIndex.get(normKey);
             if (idx != null) {
                 String value = getString(row, idx);
                 if (!value.isBlank()) return value;
+            }
+            // Fallback: allow headers that contain the search token, so
+            // columns like "AAP Session Date (Listed date is the latest AAP attended)"
+            // still match the simpler "AAP Session Date" key.
+            for (Map.Entry<String, Integer> entry : headerIndex.entrySet()) {
+                String headerKey = entry.getKey();
+                if (headerKey.contains(normKey) || normKey.contains(headerKey)) {
+                    String value = getString(row, entry.getValue());
+                    if (!value.isBlank()) return value;
+                }
             }
         }
         return "";
@@ -104,5 +125,9 @@ public class ScenarioReader {
     private static String normalize(String input) {
         if (input == null) return "";
         return input.toLowerCase(Locale.ENGLISH).replaceAll("[^a-z0-9]+", "");
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 }

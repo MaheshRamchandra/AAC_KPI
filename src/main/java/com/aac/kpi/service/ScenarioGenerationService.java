@@ -218,8 +218,22 @@ public final class ScenarioGenerationService {
             startBase = LocalDateTime.parse(parts[0], fmt);
             endBase = LocalDateTime.parse(parts[1], fmt);
         } else {
-            startBase = aapDate.atTime(9, 0);
-            endBase = startBase.plusHours(2);
+            // If AAP Session Date is a concrete date (e.g. 4-May-24),
+            // use that date as the session start and the end of the
+            // corresponding FY (01 Apr..31 Mar) as the session end.
+            LocalDate explicitAap = parseDateFlexible(aapRaw);
+            if (explicitAap != null) {
+                startBase = explicitAap.atTime(9, 0);
+                LocalDate fyEnd = explicitAap.getMonthValue() >= 4
+                        ? LocalDate.of(explicitAap.getYear() + 1, 3, 31)
+                        : LocalDate.of(explicitAap.getYear(), 3, 31);
+                endBase = fyEnd.atTime(17, 0);
+            } else {
+                // Fallback: treat the resolved base date as a simple
+                // 2-hour window so generation still works.
+                startBase = aapDate.atTime(9, 0);
+                endBase = startBase.plusHours(2);
+            }
         }
         int durationMinutes = (int) java.time.Duration.between(startBase, endBase).toMinutes();
         String startText = RandomDataUtil.isoTimestampWithOffset(startBase, "+08:00");
