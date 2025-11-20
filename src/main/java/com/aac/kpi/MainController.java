@@ -5,6 +5,7 @@ import com.aac.kpi.controller.JsonExportController;
 import com.aac.kpi.controller.JsonCsvController;
 import com.aac.kpi.controller.MasterDataController;
 import com.aac.kpi.controller.PatientMasterController;
+import com.aac.kpi.controller.RulesMlController;
 import com.aac.kpi.controller.ScenarioBuilderController;
 import com.aac.kpi.model.CommonRow;
 import com.aac.kpi.model.EventSession;
@@ -62,6 +63,8 @@ public class MainController {
     @FXML
     private Tab jsonCsvTab;
     @FXML
+    private Tab rulesTab;
+    @FXML
     private Tab userGuideTab;
     @FXML
     private Tab masterDataTab;
@@ -87,6 +90,7 @@ public class MainController {
     private JsonCsvController jsonCsvController;
     private MasterDataController masterDataController;
     private ScenarioBuilderController scenarioController;
+    private RulesMlController rulesMlController;
 
     @FXML
     private void initialize() throws IOException {
@@ -157,6 +161,12 @@ public class MainController {
         Node jsonCsvRoot = jsonCsvLoader.load();
         jsonCsvController = jsonCsvLoader.getController();
         jsonCsvTab.setContent(jsonCsvRoot);
+
+        FXMLLoader rulesLoader = new FXMLLoader(getClass().getResource("/com/aac/kpi/RulesMlView.fxml"));
+        Node rulesRoot = rulesLoader.load();
+        rulesMlController = rulesLoader.getController();
+        rulesMlController.init(patients, sessions);
+        rulesTab.setContent(rulesRoot);
 
         FXMLLoader mdLoader = new FXMLLoader(getClass().getResource("/com/aac/kpi/MasterDataView.fxml"));
         Node mdRoot = mdLoader.load();
@@ -416,17 +426,38 @@ public class MainController {
     private void updatePractitionersFromMaster(MasterDataService.MasterData masterData) {
         if (masterData == null)
             return;
+        int target = patients != null ? patients.size() : 0;
+        if (target == 0) {
+            practitioners.clear();
+            if (practitionerController != null)
+                practitionerController.refreshTable();
+            return;
+        }
         List<Practitioner> list = new ArrayList<>();
-        for (MasterDataService.Volunteer vol : masterData.getVolunteers()) {
+        List<MasterDataService.Volunteer> vols = masterData.getVolunteers();
+        for (int i = 0; i < target; i++) {
             Practitioner p = new Practitioner();
-            p.setPractitionerId(vol.volunteerId());
-            p.setPractitionerIdentifierValue(vol.volunteerId());
-            p.setPractitionerIdentifierSystem("http://ihis.sg/identifier/aac-staff-id");
-            p.setPractitionerManpowerPosition(vol.volunteerRole());
-            p.setPractitionerVolunteerName(vol.volunteerName());
-            p.setPractitionerManpowerCapacity(0.8);
-            p.setPractitionerVolunteerAge(30);
-            p.setWorkingRemarks("Synced from master");
+            if (i < vols.size()) {
+                MasterDataService.Volunteer vol = vols.get(i);
+                p.setPractitionerId(vol.volunteerId());
+                p.setPractitionerIdentifierValue(vol.volunteerId());
+                p.setPractitionerIdentifierSystem("http://ihis.sg/identifier/aac-staff-id");
+                p.setPractitionerManpowerPosition(vol.volunteerRole());
+                p.setPractitionerVolunteerName(vol.volunteerName());
+                p.setPractitionerManpowerCapacity(0.8);
+                p.setPractitionerVolunteerAge(30);
+                p.setWorkingRemarks("Synced from master");
+            } else {
+                // Fallback generation when master data has fewer volunteers than patients
+                p.setPractitionerId(com.aac.kpi.service.RandomDataUtil.uuid32());
+                p.setPractitionerIdentifierValue(com.aac.kpi.service.RandomDataUtil.uuid32());
+                p.setPractitionerIdentifierSystem("http://ihis.sg/identifier/aac-staff-id");
+                p.setPractitionerManpowerPosition("Volunteer");
+                p.setPractitionerVolunteerName(com.aac.kpi.service.RandomDataUtil.randomVolunteerName());
+                p.setPractitionerManpowerCapacity(0.8);
+                p.setPractitionerVolunteerAge(com.aac.kpi.service.RandomDataUtil.randomInt(25, 65));
+                p.setWorkingRemarks("Auto-generated to match patient count");
+            }
             list.add(p);
         }
         practitioners.setAll(list);

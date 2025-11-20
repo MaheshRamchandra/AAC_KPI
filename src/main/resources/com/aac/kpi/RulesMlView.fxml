@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aac.kpi.controller.RulesMlController" stylesheets="@style.css">
+    <top>
+        <HBox spacing="10">
+            <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
+            <children>
+                <Button text="Load Config" onAction="#onLoadConfig"/>
+                <Button text="Save Config" onAction="#onSaveConfig"/>
+                <Button text="Reset to Defaults" onAction="#onResetDefaults"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <CheckBox fx:id="applyConfigCheckbox" text="Use UI config for next generation/preview" selected="false"/>
+            </children>
+        </HBox>
+    </top>
+    <center>
+        <ScrollPane fitToWidth="true">
+            <content>
+                <VBox spacing="12">
+                    <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
+                    <children>
+                        <TitledPane text="Thresholds &amp; Screening" expanded="true">
+                            <content>
+                                <GridPane hgap="10" vgap="10">
+                                    <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+                                    <columnConstraints>
+                                        <ColumnConstraints percentWidth="25"/>
+                                        <ColumnConstraints percentWidth="25"/>
+                                        <ColumnConstraints percentWidth="25"/>
+                                        <ColumnConstraints percentWidth="25"/>
+                                    </columnConstraints>
+                                    <rowConstraints>
+                                        <RowConstraints/>
+                                        <RowConstraints/>
+                                        <RowConstraints/>
+                                    </rowConstraints>
+                                    <children>
+                                        <Label text="Robust min in-person" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="robustMinField" promptText="2" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                                        <Label text="Frail min in-person" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                                        <TextField fx:id="frailMinField" promptText="6" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+
+                                        <Label text="Buddying min in-person" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="buddyMinField" promptText="6" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                                        <Label text="Befriending min in-person" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                                        <TextField fx:id="befMinField" promptText="12" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+
+                                        <Label text="Befriending contacts (annual)" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="befContactsField" promptText="52" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                                        <Label text="Screening purpose" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+                                        <TextField fx:id="screeningPurposeField" promptText="Functional or Health Screening Client Self-Declaration" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
+                                    </children>
+                                </GridPane>
+                            </content>
+                        </TitledPane>
+
+                        <TitledPane text="Purpose/Mode Rules" expanded="true">
+                            <content>
+                                <VBox spacing="8">
+                                    <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                                    <children>
+                                        <TableView fx:id="purposeTable" editable="true">
+                                            <columns>
+                                                <TableColumn fx:id="cLabel" text="Label" prefWidth="150"/>
+                                                <TableColumn fx:id="cPurpose" text="Purpose" prefWidth="140"/>
+                                                <TableColumn fx:id="cMode" text="Mode" prefWidth="120"/>
+                                                <TableColumn fx:id="cMinCount" text="Min Count" prefWidth="90"/>
+                                                <TableColumn fx:id="cDescription" text="Description" prefWidth="260"/>
+                                            </columns>
+                                        </TableView>
+                                        <HBox spacing="8">
+                                            <Button text="Add" onAction="#onAddPurposeRule"/>
+                                            <Button text="Remove Selected" onAction="#onRemovePurposeRule"/>
+                                            <Region HBox.hgrow="ALWAYS"/>
+                                            <Label text="Double-click cells to edit values."/>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+                            </content>
+                        </TitledPane>
+
+                        <TitledPane text="Sheet &amp; Column Definitions" expanded="false">
+                            <content>
+                                <VBox spacing="8">
+                                    <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                                    <children>
+                                        <TableView fx:id="columnTable" editable="true">
+                                            <columns>
+                                                <TableColumn fx:id="colSheet" text="Sheet" prefWidth="150"/>
+                                                <TableColumn fx:id="colColumn" text="Column" prefWidth="180"/>
+                                                <TableColumn fx:id="colSourceSheet" text="From Sheet" prefWidth="140"/>
+                                                <TableColumn fx:id="colSourceColumn" text="From Column" prefWidth="140"/>
+                                                <TableColumn fx:id="colRequired" text="Required?" prefWidth="100"/>
+                                                <TableColumn fx:id="colDefault" text="Default" prefWidth="120"/>
+                                                <TableColumn fx:id="colNotes" text="Notes" prefWidth="240"/>
+                                            </columns>
+                                        </TableView>
+                                        <HBox spacing="8">
+                                            <Button text="Add Column" onAction="#onAddColumnSpec"/>
+                                            <Button text="Remove Selected" onAction="#onRemoveColumnSpec"/>
+                                            <Region HBox.hgrow="ALWAYS"/>
+                                            <Label text="Use this grid to describe new columns for exports/generation."/>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+                            </content>
+                        </TitledPane>
+
+                        <TitledPane text="Preview (no data changes)" expanded="false">
+                            <content>
+                                <VBox spacing="8">
+                                    <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                                    <children>
+                                        <HBox spacing="8">
+                                            <Button text="Refresh Preview" onAction="#onRefreshPreview"/>
+                                            <Label text="Runs simulation on current data using built-in vs UI thresholds without editing patient rows."/>
+                                        </HBox>
+                                        <TextArea fx:id="previewArea" promptText="Preview results..." prefRowCount="6" wrapText="true"/>
+                                    </children>
+                                </VBox>
+                            </content>
+                        </TitledPane>
+
+                        <TitledPane text="ML/Heuristic Suggestions" expanded="false">
+                            <content>
+                                <VBox spacing="8">
+                                    <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                                    <children>
+                                        <HBox spacing="8">
+                                            <Button text="Refresh Suggestions" onAction="#onRefreshSuggestions"/>
+                                            <Label text="Flags missing modes/purposes/dates and proposes fixes with confidence hints."/>
+                                        </HBox>
+                                        <TextArea fx:id="suggestionsArea" promptText="Suggestions will appear here." prefRowCount="6" wrapText="true"/>
+                                    </children>
+                                </VBox>
+                            </content>
+                        </TitledPane>
+                    </children>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </center>
+</BorderPane>

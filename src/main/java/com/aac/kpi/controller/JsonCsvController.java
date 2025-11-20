@@ -123,7 +123,10 @@ public class JsonCsvController {
 
     private void processFolder(Path folder, Path output) throws IOException {
         List<Path> jsonFiles = Files.list(folder)
-                .filter(p -> p.toString().toLowerCase().endsWith(".json"))
+                .filter(p -> {
+                    String name = p.getFileName().toString().toLowerCase(Locale.ROOT);
+                    return name.endsWith(".json") && !name.startsWith("all_");
+                })
                 .sorted()
                 .toList();
         if (jsonFiles.isEmpty()) {

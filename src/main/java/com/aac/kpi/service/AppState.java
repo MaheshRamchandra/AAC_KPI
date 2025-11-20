@@ -16,7 +16,8 @@ public final class AppState {
     private static volatile String jsonConverterJarPath = "lib/KPITool-1.0-SNAPSHOT-jar-with-dependencies.jar";
     private static volatile String eventReportLabel = "";
     private static volatile int volunteersPerCenter = 3;
-    private static volatile int aacCenterCount = 150;
+    private static volatile int aacCenterCount = 20;
+    private static volatile com.aac.kpi.model.RulesConfig rulesConfig = com.aac.kpi.model.RulesConfig.defaults();
 
     private static final Set<String> highlightedPatientIds = new LinkedHashSet<>();
     private static final Set<String> highlightedEventSessionCompositionIds = new LinkedHashSet<>();
@@ -91,4 +92,9 @@ public final class AppState {
         if (id != null && !id.isBlank()) highlightedQuestionnaireIds.add(id);
     }
     public static void clearHighlightedQuestionnaireIds() { highlightedQuestionnaireIds.clear(); }
+
+    public static com.aac.kpi.model.RulesConfig getRulesConfig() { return rulesConfig; }
+    public static void setRulesConfig(com.aac.kpi.model.RulesConfig cfg) {
+        if (cfg != null) rulesConfig = cfg;
+    }
 }

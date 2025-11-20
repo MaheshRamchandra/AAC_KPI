@@ -1,0 +1,94 @@
+{
+  "meta": {
+    "version": "1.0",
+    "notes": "Editable UI configuration for KPI preview and generation defaults."
+  },
+  "thresholds": {
+    "robustMinInPerson": 2,
+    "frailMinInPerson": 6,
+    "buddyingMinInPerson": 6,
+    "befriendingMinInPerson": 12,
+    "befriendingMinContacts": 52,
+    "dateWindow": "01 Apr – 31 Mar (FY)"
+  },
+  "screening": {
+    "purpose": "Functional or Health Screening Client Self-Declaration",
+    "window": "01 Apr – 31 Mar (FY)",
+    "requireInPersonAAP": true
+  },
+  "purposes": [
+    {
+      "label": "Robust AAP",
+      "purpose": "physical-activity",
+      "mode": "In-person",
+      "minCount": 2,
+      "description": "Count AAP attendances for CFS 1-3 and CFS 6-9 (grouped separately)."
+    },
+    {
+      "label": "Frail AAP",
+      "purpose": "physical-activity",
+      "mode": "In-person",
+      "minCount": 6,
+      "description": "Count AAP attendances for CFS 4-5 and CFS 6-9 (very frail group)."
+    },
+    {
+      "label": "Buddying",
+      "purpose": "buddying",
+      "mode": "In-person",
+      "minCount": 12,
+      "description": "Buddying contacts; AAP minimum of 6 in-person sessions."
+    },
+    {
+      "label": "Befriending",
+      "purpose": "befriending",
+      "mode": "In-person",
+      "minCount": 52,
+      "description": "Befriending contacts; AAP minimum of 12 in-person sessions."
+    }
+  ],
+  "columns": [
+    {
+      "sheet": "Patient (Master)",
+      "column": "CFS",
+      "required": "yes",
+      "defaultValue": "",
+      "notes": "CFS range drives KPI bucket."
+    },
+    {
+      "sheet": "Patient (Master)",
+      "column": "RF",
+      "required": "yes",
+      "defaultValue": "",
+      "notes": "Risk factor count; 1 \u003d Buddying, \u003e1 \u003d Befriending."
+    },
+    {
+      "sheet": "Event Session",
+      "column": "purpose_of_contact",
+      "required": "yes",
+      "defaultValue": "",
+      "notes": "Purpose drives KPI contact counts."
+    },
+    {
+      "sheet": "Event Session",
+      "column": "event_session_mode1",
+      "required": "yes",
+      "defaultValue": "In-person",
+      "notes": "Mode filter for AAP/Buddying/Befriending."
+    },
+    {
+      "sheet": "Event Session",
+      "column": "event_session_start_date1",
+      "required": "yes",
+      "defaultValue": "",
+      "notes": "FY window 01 Apr–31 Mar check."
+    }
+  ],
+  "randomDefaults": {
+    "defaultMode": "In-person",
+    "defaultAAPSessions": 6,
+    "defaultBuddyingContacts": 12,
+    "defaultBefriendingContacts": 52,
+    "dateWindow": "FY 01 Apr – 31 Mar"
+  },
+  "applyToGeneration": false
+}
