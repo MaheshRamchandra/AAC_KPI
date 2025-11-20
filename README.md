@@ -142,7 +142,7 @@ Summary (what it does and how it links)
     - A combined Common sheet with sections: aac_report, resident_report, volunteer_attendance_report, event_report, organization_report, and location_report (each with a colored title row, headers, and data rows).
     - Master sheets: Event Sessions, Patient (Master), Practitioner (Master), Encounter (Master), QuestionnaireResponse (Master) when data exists.
     - Applies consistent formatting (dates, date‑times with +08:00, column order, autosizing) and derives helpful aggregates (e.g., per‑event attendees, counts).
-  - LinkService: fills Patient.attended_event_references by looking at sessions for that patient (sanitizes ids so “Patient/<id>” and “<id>” both match).
+  - LinkService: fills Patient.attended_event_references with the composition_ids of sessions for that patient, matching the Event Sessions sheet.
   - CommonBuilderService: builds resident_report rows (CommonRow) by joining Patients ↔ Encounters ↔ Questionnaires ↔ Sessions. It:
     - Requires at least one Encounter reference (prefers finished + valid purposes; falls back to any if none match).
     - Picks the latest completed Questionnaire per patient.
@@ -158,7 +158,7 @@ Summary (what it does and how it links)
 - How data links end‑to‑end
   - All tabs share the same backing lists, so generating in one tab is visible everywhere.
   - Sessions link to Patients via event_session_patient_references1; Encounters and Questionnaires link via their patient_reference fields.
-  - LinkService back‑fills a readable list of a patient’s attended session ids into the Patient table for convenience.
+  - LinkService back‑fills a readable list of a patient’s attended event composition_ids into the Patient table for convenience.
   - CommonBuilderService uses those link fields (with id sanitization) to join records and construct resident_report rows.
   - Export uses the current lists (and built Common rows) to write a single Excel file with “Common” sections and master tabs; the volunteer_attendance_report section respects the number you enter when prompted.
 

@@ -131,7 +131,9 @@ public class ExcelWriter {
             String raw = s.getEventSessionPatientReferences1();
             if (raw == null || raw.isBlank())
                 continue;
-            String eventId = StringUtils.sanitizeAlphaNum(s.getEventSessionId1());
+            // Use sanitized composition_id so references in the patient sheet
+            // line up with the Event Sessions sheet.
+            String eventId = StringUtils.sanitizeAlphaNum(s.getCompositionId());
             if (eventId.isEmpty())
                 continue;
             for (String part : raw.split("##")) {
@@ -169,7 +171,7 @@ public class ExcelWriter {
             String[] race = RandomDataUtil.randomRace();
             row.createCell(c++).setCellValue(race[0]);
             row.createCell(c++).setCellValue(race[1]);
-            // Ensure attended_event_references contains only alphanumeric event IDs (##-delimited)
+            // Ensure attended_event_references contains only alphanumeric event composition_ids (##-delimited)
             List<String> comps = patientToEvents.getOrDefault(p.getPatientId(), Collections.emptyList());
             StringBuilder sb = new StringBuilder();
             for (String id : comps) {

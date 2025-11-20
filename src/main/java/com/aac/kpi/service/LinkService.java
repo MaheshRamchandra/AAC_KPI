@@ -16,7 +16,9 @@ public final class LinkService {
         for (EventSession s : sessions) {
             String raw = s.getEventSessionPatientReferences1();
             if (raw == null || raw.isBlank()) continue;
-            String eventId = sanitizeAlphaNum(s.getEventSessionId1());
+            // Use the event composition_id (sanitized) so patient references
+            // align with the Event Sessions sheet and downstream exports.
+            String eventId = sanitizeAlphaNum(s.getCompositionId());
             if (eventId.isEmpty()) continue;
             for (String part : raw.split("##")) {
                 String pid = part == null ? "" : part.trim();
