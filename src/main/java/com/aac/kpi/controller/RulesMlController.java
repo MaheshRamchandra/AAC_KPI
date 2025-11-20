@@ -3,15 +3,21 @@ package com.aac.kpi.controller;
 import com.aac.kpi.model.EventSession;
 import com.aac.kpi.model.Patient;
 import com.aac.kpi.model.RulesConfig;
+import com.aac.kpi.model.RuleGraph;
 import com.aac.kpi.service.AppState;
 import com.aac.kpi.service.KpiService;
 import com.aac.kpi.service.RulesConfigService;
+import com.aac.kpi.service.RuleGraphService;
 import com.aac.kpi.service.RulesSuggestionService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.paint.Color;
 import javafx.util.converter.IntegerStringConverter;
 
 import java.io.File;
@@ -51,9 +57,27 @@ public class RulesMlController {
 
     @FXML private TextArea previewArea;
     @FXML private TextArea suggestionsArea;
+    // Rule graph UI
+    @FXML private TextField ruleSearchField;
+    @FXML private ListView<String> sheetListView;
+    @FXML private TableView<RuleGraph.ColumnRule> ruleCardTable;
+    @FXML private TableColumn<RuleGraph.ColumnRule, String> rcColumn;
+    @FXML private TableColumn<RuleGraph.ColumnRule, String> rcDataType;
+    @FXML private TableColumn<RuleGraph.ColumnRule, String> rcFormat;
+    @FXML private TableColumn<RuleGraph.ColumnRule, String> rcLogic;
+    @FXML private TableColumn<RuleGraph.ColumnRule, String> rcSourceSheet;
+    @FXML private TableColumn<RuleGraph.ColumnRule, String> rcSourceColumn;
+    @FXML private TableColumn<RuleGraph.ColumnRule, String> rcTransform;
+    @FXML private TableColumn<RuleGraph.ColumnRule, String> rcPreview;
+    @FXML private TextArea rulePreviewArea;
+    @FXML private Canvas flowCanvas;
+    @FXML private ListView<String> scenarioOverridesList;
 
     private ObservableList<RulesConfig.PurposeRule> purposeRules = FXCollections.observableArrayList();
     private ObservableList<RulesConfig.ColumnSpec> columnSpecs = FXCollections.observableArrayList();
+    private ObservableList<RuleGraph.ColumnRule> ruleColumns = FXCollections.observableArrayList();
+    private FilteredList<RuleGraph.ColumnRule> filteredRuleColumns = new FilteredList<>(ruleColumns, r -> true);
+    private RuleGraph ruleGraph = RuleGraph.defaults();
     private ObservableList<Patient> patients;
     private ObservableList<EventSession> sessions;
     private File configFile;
@@ -66,7 +90,9 @@ public class RulesMlController {
         this.sessions = sessions;
         configFile = RulesConfigService.defaultFile();
         setupTables();
+        setupRuleGraphUi();
         loadConfig(RulesConfigService.ensureFile());
+        loadRuleGraph(RuleGraphService.ensureFile());
     }
 
     private void setupTables() {
@@ -141,11 +167,90 @@ public class RulesMlController {
         }
     }
 
+    private void setupRuleGraphUi() {
+        if (ruleCardTable != null) {
+            ruleCardTable.setEditable(true);
+            rcColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(safe(cell.getValue().name)));
+            rcColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            rcColumn.setOnEditCommit(e -> e.getRowValue().name = e.getNewValue());
+
+            rcDataType.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(safe(cell.getValue().dataType)));
+            rcDataType.setCellFactory(TextFieldTableCell.forTableColumn());
+            rcDataType.setOnEditCommit(e -> e.getRowValue().dataType = e.getNewValue());
+
+            rcFormat.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(safe(cell.getValue().format)));
+            rcFormat.setCellFactory(TextFieldTableCell.forTableColumn());
+            rcFormat.setOnEditCommit(e -> e.getRowValue().format = e.getNewValue());
+
+            rcLogic.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(safe(cell.getValue().logicType)));
+            rcLogic.setCellFactory(TextFieldTableCell.forTableColumn());
+            rcLogic.setOnEditCommit(e -> e.getRowValue().logicType = e.getNewValue());
+
+            rcSourceSheet.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(safe(cell.getValue().sourceSheet)));
+            rcSourceSheet.setCellFactory(TextFieldTableCell.forTableColumn());
+            rcSourceSheet.setOnEditCommit(e -> e.getRowValue().sourceSheet = e.getNewValue());
+
+            rcSourceColumn.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(safe(cell.getValue().sourceColumn)));
+            rcSourceColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            rcSourceColumn.setOnEditCommit(e -> e.getRowValue().sourceColumn = e.getNewValue());
+
+            rcTransform.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(safe(cell.getValue().transform)));
+            rcTransform.setCellFactory(TextFieldTableCell.forTableColumn());
+            rcTransform.setOnEditCommit(e -> e.getRowValue().transform = e.getNewValue());
+
+            rcPreview.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(safe(cell.getValue().previewPattern)));
+            rcPreview.setCellFactory(TextFieldTableCell.forTableColumn());
+            rcPreview.setOnEditCommit(e -> e.getRowValue().previewPattern = e.getNewValue());
+
+            ruleCardTable.setItems(filteredRuleColumns);
+        }
+
+        if (sheetListView != null) {
+            sheetListView.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
+                selectSheet(newV);
+            });
+        }
+
+        if (ruleSearchField != null) {
+            ruleSearchField.textProperty().addListener((obs, oldV, newV) -> {
+                String q = newV == null ? "" : newV.toLowerCase();
+                filteredRuleColumns.setPredicate(rule -> {
+                    if (rule == null) return false;
+                    if (q.isBlank()) return true;
+                    return safe(rule.name).toLowerCase().contains(q)
+                            || safe(rule.sourceSheet).toLowerCase().contains(q)
+                            || safe(rule.sourceColumn).toLowerCase().contains(q);
+                });
+            });
+        }
+    }
+
     @FXML
     private void onLoadConfig() {
         RulesConfig cfg = RulesConfigService.ensureFile();
         loadConfig(cfg);
         showInfo("Config loaded from " + configFile.getPath());
+    }
+
+    @FXML
+    private void onLoadRuleGraph() {
+        loadRuleGraph(RuleGraphService.ensureFile());
+        showInfo("Rule graph loaded from " + RuleGraphService.defaultFile().getPath());
+    }
+
+    @FXML
+    private void onSaveRuleGraph() {
+        try {
+            RuleGraphService.save(ruleGraph);
+            showInfo("Rule graph saved to " + RuleGraphService.defaultFile().getPath());
+        } catch (Exception ex) {
+            showError("Failed to save rule graph: " + ex.getMessage());
+        }
+    }
+
+    @FXML
+    private void onResetRuleGraph() {
+        loadRuleGraph(RuleGraph.defaults());
     }
 
     @FXML
@@ -241,6 +346,115 @@ public class RulesMlController {
         suggestionsArea.setText(out);
     }
 
+    private void loadRuleGraph(RuleGraph g) {
+        if (g == null) g = RuleGraph.defaults();
+        this.ruleGraph = g;
+        ruleColumns.setAll(collectAllColumnRules(g));
+        // Populate sheet list
+        if (sheetListView != null) {
+            sheetListView.getItems().setAll(
+                    g.sheets == null ? List.of() : g.sheets.stream().map(s -> safe(s.name)).toList());
+            if (!sheetListView.getItems().isEmpty()) {
+                sheetListView.getSelectionModel().select(0);
+            }
+        }
+        updateRulePreviewArea();
+        updateScenarioOverridesView();
+        drawFlowDiagram();
+    }
+
+    private void selectSheet(String name) {
+        if (ruleGraph == null || ruleGraph.sheets == null) return;
+        for (RuleGraph.SheetRule s : ruleGraph.sheets) {
+            if (safe(s.name).equals(name)) {
+                ruleColumns.setAll(s.columns == null ? List.of() : s.columns);
+                updateRulePreviewArea();
+                return;
+            }
+        }
+        ruleColumns.clear();
+        updateRulePreviewArea();
+    }
+
+    private List<RuleGraph.ColumnRule> collectAllColumnRules(RuleGraph g) {
+        List<RuleGraph.ColumnRule> cols = new ArrayList<>();
+        if (g != null && g.sheets != null) {
+            for (RuleGraph.SheetRule s : g.sheets) {
+                if (s.columns != null) cols.addAll(s.columns);
+            }
+        }
+        return cols;
+    }
+
+    private void updateRulePreviewArea() {
+        if (rulePreviewArea == null) return;
+        StringBuilder sb = new StringBuilder();
+        String sheet = sheetListView != null ? sheetListView.getSelectionModel().getSelectedItem() : "";
+        sb.append("Preview (patterns only) for sheet: ").append(sheet == null ? "" : sheet).append("\n");
+        for (RuleGraph.ColumnRule c : filteredRuleColumns) {
+            sb.append("- ").append(c.name)
+                    .append(" [").append(c.dataType).append(", ").append(c.format).append(", ").append(c.logicType).append("]")
+                    .append(" src: ").append(safe(c.sourceSheet)).append(".").append(safe(c.sourceColumn))
+                    .append(" → ").append(safe(c.previewPattern))
+                    .append("\n");
+        }
+        rulePreviewArea.setText(sb.toString().trim());
+    }
+
+    private void updateScenarioOverridesView() {
+        if (scenarioOverridesList == null) return;
+        List<String> overrides = new ArrayList<>();
+        if (ruleGraph != null && ruleGraph.scenarios != null) {
+            for (RuleGraph.ScenarioRule s : ruleGraph.scenarios) {
+                for (RuleGraph.ScenarioOverride ov : s.overrides) {
+                    overrides.add(s.name + " → " + ov.toString());
+                }
+            }
+        }
+        scenarioOverridesList.getItems().setAll(overrides);
+    }
+
+    private void drawFlowDiagram() {
+        if (flowCanvas == null) return;
+        GraphicsContext gc = flowCanvas.getGraphicsContext2D();
+        double w = flowCanvas.getWidth();
+        double h = flowCanvas.getHeight();
+        gc.setFill(Color.WHITE);
+        gc.fillRect(0, 0, w, h);
+        gc.setStroke(Color.web("#455a64"));
+        gc.setLineWidth(1.4);
+        // Simple layout of nodes
+        DiagramNode[] nodes = new DiagramNode[] {
+                new DiagramNode("Patient", 100, 80),
+                new DiagramNode("Event", 280, 80),
+                new DiagramNode("Encounter", 460, 80),
+                new DiagramNode("Questionnaire", 640, 80),
+                new DiagramNode("Practitioner", 820, 80),
+                new DiagramNode("Common", 460, 200),
+                new DiagramNode("AAC/Org/Location", 280, 200)
+        };
+        int[][] edges = {
+                {0,1}, {0,2}, {0,3}, {1,5}, {2,5}, {3,5}, {4,5}, {6,1}
+        };
+        for (int[] e : edges) {
+            DiagramNode a = nodes[e[0]];
+            DiagramNode b = nodes[e[1]];
+            gc.strokeLine(a.x, a.y, b.x, b.y);
+        }
+        gc.setFill(Color.web("#e8f0fe"));
+        gc.setStroke(Color.web("#1e88e5"));
+        gc.setLineWidth(1.2);
+        for (DiagramNode n : nodes) {
+            double bw = 120, bh = 36;
+            double x0 = n.x - bw/2, y0 = n.y - bh/2;
+            gc.fillRoundRect(x0, y0, bw, bh, 10, 10);
+            gc.strokeRoundRect(x0, y0, bw, bh, 10, 10);
+            gc.setFill(Color.web("#1f2933"));
+            gc.fillText(n.label, n.x - 40, n.y + 4);
+            gc.setFill(Color.web("#e8f0fe"));
+        }
+    }
+
     private void loadConfig(RulesConfig cfg) {
         if (cfg == null) cfg = RulesConfig.defaults();
         robustMinField.setText(String.valueOf(cfg.thresholds.robustMinInPerson));
@@ -331,6 +545,8 @@ public class RulesMlController {
     private String safe(String v) {
         return v == null ? "" : v;
     }
+
+    private record DiagramNode(String label, double x, double y) {}
 
     private void showError(String msg) {
         Alert a = new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK);

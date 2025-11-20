@@ -1,0 +1,218 @@
+{
+  "sheets": [
+    {
+      "name": "Patient (Master)",
+      "columns": [
+        {
+          "name": "patient_id",
+          "dataType": "text",
+          "format": "uuid32",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "generate UUIDs",
+          "previewPattern": "PAT-xxxxx",
+          "delimiter": ""
+        },
+        {
+          "name": "patient_name",
+          "dataType": "text",
+          "format": "name",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "random resident name",
+          "previewPattern": "Jane Doe",
+          "delimiter": ""
+        },
+        {
+          "name": "patient_postal_code",
+          "dataType": "text",
+          "format": "postal-6",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "random 6-digit postal within AAC area",
+          "previewPattern": "123456",
+          "delimiter": ""
+        },
+        {
+          "name": "attended_event_references",
+          "dataType": "text",
+          "format": "list##alphanumeric",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "composition_id",
+          "transform": "collect attended sessions where attended_indicator\u003dtrue",
+          "previewPattern": "EVT123##EVT456",
+          "delimiter": ""
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Event Session",
+      "columns": [
+        {
+          "name": "composition_id",
+          "dataType": "text",
+          "format": "uuid32",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "unique event composition id",
+          "previewPattern": "EVT-xxxxx",
+          "delimiter": ""
+        },
+        {
+          "name": "event_session_patient_references1",
+          "dataType": "text",
+          "format": "list##uuid",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "patient_id",
+          "transform": "pick N unique based on number_of_event_sessions and attended_indicator",
+          "previewPattern": "PAT-xxxxx##PAT-yyyyy",
+          "delimiter": ""
+        },
+        {
+          "name": "event_session_start_date1",
+          "dataType": "date",
+          "format": "yyyy-MM-dd\u0027T\u0027HH:mm:ssXXX",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "random within FY window",
+          "previewPattern": "2025-04-15T09:00:00+08:00",
+          "delimiter": ""
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Encounter Master",
+      "columns": [
+        {
+          "name": "encounter_patient_reference",
+          "dataType": "text",
+          "format": "uuid",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "patient_id",
+          "transform": "link encounter to patient",
+          "previewPattern": "PAT-xxxxx",
+          "delimiter": ""
+        },
+        {
+          "name": "encounter_practitioner_reference",
+          "dataType": "text",
+          "format": "uuid",
+          "logicType": "derived",
+          "sourceSheet": "Practitioner Master",
+          "sourceColumn": "practitioner_id",
+          "transform": "staff who created encounter",
+          "previewPattern": "PR-xxxxx",
+          "delimiter": ""
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Practitioner Master",
+      "columns": [
+        {
+          "name": "practitioner_id",
+          "dataType": "text",
+          "format": "uuid32",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "unique practitioner id",
+          "previewPattern": "PR-xxxxx",
+          "delimiter": ""
+        },
+        {
+          "name": "practitioner_name",
+          "dataType": "text",
+          "format": "name",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "random volunteer name",
+          "previewPattern": "Alex Lee",
+          "delimiter": ""
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Questionnaire Response",
+      "columns": [
+        {
+          "name": "questionnaire_patient_reference",
+          "dataType": "text",
+          "format": "uuid",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "patient_id",
+          "transform": "link questionnaire to patient",
+          "previewPattern": "PAT-xxxxx",
+          "delimiter": ""
+        },
+        {
+          "name": "q1",
+          "dataType": "number",
+          "format": "score(0-5)",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "random score in range",
+          "previewPattern": "4",
+          "delimiter": ""
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Common",
+      "columns": [
+        {
+          "name": "patient_reference",
+          "dataType": "text",
+          "format": "uuid",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "patient_id",
+          "transform": "pass-through for exports",
+          "previewPattern": "PAT-xxxxx",
+          "delimiter": ""
+        },
+        {
+          "name": "event_reference",
+          "dataType": "text",
+          "format": "uuid",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "composition_id",
+          "transform": "pass-through for exports",
+          "previewPattern": "EVT-xxxxx",
+          "delimiter": ""
+        }
+      ],
+      "description": ""
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "Default Scenario",
+      "overrides": [
+        {
+          "sheet": "Patient (Master)",
+          "column": "patient_birthdate",
+          "logicType": "fixed",
+          "transform": "age\u003d65"
+        }
+      ]
+    }
+  ]
+}

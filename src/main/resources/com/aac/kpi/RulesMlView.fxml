@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
+<?import javafx.scene.canvas.Canvas?>
 <?import javafx.scene.layout.*?>
 
 <BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
@@ -23,6 +24,74 @@
                 <VBox spacing="12">
                     <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
                     <children>
+                        <TitledPane text="Dynamic Rule Mapping (Sheets &amp; Columns)" expanded="true">
+                            <content>
+                                <VBox spacing="8">
+                                    <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                                    <children>
+                                        <HBox spacing="8" alignment="CENTER_LEFT">
+                                            <Label text="Search rules"/>
+                                            <TextField fx:id="ruleSearchField" promptText="Search column or sheet"/>
+                                            <Button text="Load Rule Graph" onAction="#onLoadRuleGraph"/>
+                                            <Button text="Save Rule Graph" onAction="#onSaveRuleGraph"/>
+                                            <Button text="Reset Rule Graph" onAction="#onResetRuleGraph"/>
+                                            <Region HBox.hgrow="ALWAYS"/>
+                                        </HBox>
+                                        <SplitPane orientation="HORIZONTAL">
+                                            <items>
+                                                <VBox spacing="6">
+                                                    <Label text="Sheets"/>
+                                                    <ListView fx:id="sheetListView" prefWidth="200" prefHeight="220"/>
+                                                </VBox>
+                                                <VBox spacing="6">
+                                                    <Label text="Rule Cards (columns) — editable cells"/>
+                                                    <TableView fx:id="ruleCardTable" editable="true">
+                                                        <columns>
+                                                            <TableColumn fx:id="rcColumn" text="Column" prefWidth="140"/>
+                                                            <TableColumn fx:id="rcDataType" text="Type" prefWidth="100"/>
+                                                            <TableColumn fx:id="rcFormat" text="Format" prefWidth="140"/>
+                                                            <TableColumn fx:id="rcLogic" text="Logic" prefWidth="120"/>
+                                                            <TableColumn fx:id="rcSourceSheet" text="From Sheet" prefWidth="140"/>
+                                                            <TableColumn fx:id="rcSourceColumn" text="From Column" prefWidth="140"/>
+                                                            <TableColumn fx:id="rcTransform" text="Transform" prefWidth="180"/>
+                                                            <TableColumn fx:id="rcPreview" text="Preview" prefWidth="140"/>
+                                                        </columns>
+                                                    </TableView>
+                                                </VBox>
+                                            </items>
+                                        </SplitPane>
+                                        <TextArea fx:id="rulePreviewArea" promptText="Rule-based preview (patterns only, no real data)" prefRowCount="4" wrapText="true"/>
+                                    </children>
+                                </VBox>
+                            </content>
+                        </TitledPane>
+
+                        <TitledPane text="Rule Flow Diagram" expanded="false">
+                            <content>
+                                <VBox spacing="6">
+                                    <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                                    <children>
+                                        <Label text="Click a node or edge to view mapping (diagram is illustrative only)."/>
+                                        <StackPane>
+                                            <Canvas fx:id="flowCanvas" width="840" height="320" />
+                                        </StackPane>
+                                    </children>
+                                </VBox>
+                            </content>
+                        </TitledPane>
+
+                        <TitledPane text="Scenario Overrides &amp; Isolation" expanded="false">
+                            <content>
+                                <VBox spacing="6">
+                                    <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                                    <children>
+                                        <Label text="Scenario overrides applied on top of rule graph (isolated per scenario)."/>
+                                        <ListView fx:id="scenarioOverridesList" prefHeight="120"/>
+                                    </children>
+                                </VBox>
+                            </content>
+                        </TitledPane>
+
                         <TitledPane text="Thresholds &amp; Screening" expanded="true">
                             <content>
                                 <GridPane hgap="10" vgap="10">
