@@ -56,11 +56,17 @@
 
                     <Label text="Remarks / Others" GridPane.rowIndex="9" GridPane.columnIndex="0" />
                     <TextArea fx:id="taRemarks" GridPane.rowIndex="9" GridPane.columnIndex="1" prefRowCount="3" wrapText="true" />
+
+                    <Label text="Custom columns (key=value, one per line)" GridPane.rowIndex="10" GridPane.columnIndex="0" />
+                    <TextArea fx:id="taCustomExtras" GridPane.rowIndex="10" GridPane.columnIndex="1" prefRowCount="3" wrapText="true"
+                              promptText="Example:&#10;Social Risk Factor=>1&#10;KPI Type=Befriending" />
                 </GridPane>
                 <HBox spacing="10">
                     <children>
                         <Button text="Load from Excel" onAction="#onLoadFromExcel" />
                         <Button text="Add Scenario" onAction="#onAddScenario" />
+                        <Button text="Add Column" onAction="#onAddColumnOverride" />
+                        <Button text="Remove Column" onAction="#onRemoveColumnOverride" />
                         <Button text="Remove Selected" onAction="#onRemoveSelected" />
                         <Button text="Reset Fields" onAction="#onResetForm" />
                     </children>
@@ -81,6 +87,7 @@
                 <TableColumn fx:id="cContactDate" text="Date of contact" prefWidth="120" />
                 <TableColumn fx:id="cAge" text="Age" prefWidth="80" />
                 <TableColumn fx:id="cRemarks" text="Remarks / Others" prefWidth="200" />
+                <TableColumn fx:id="cOverrides" text="Column overrides" prefWidth="260" />
             </columns>
         </TableView>
     </center>

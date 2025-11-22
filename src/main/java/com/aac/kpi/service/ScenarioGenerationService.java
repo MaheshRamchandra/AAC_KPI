@@ -122,11 +122,16 @@ public final class ScenarioGenerationService {
         int aapAttendanceCount = parsePositiveInt(scenario.getNumberOfAapAttendance(), 0);
         String cfsText = scenario.getCfs();
         IntRange cfsRange = parseCfsRange(cfsText);
+        Map<String, String> extras = scenario.getExtraFields() == null ? Map.of() : scenario.getExtraFields();
+        List<ScenarioTestCase.ColumnOverride> overrides = scenario.getColumnOverrides() == null ? List.of() : scenario.getColumnOverrides();
 
         String modeOfEvent = nvl(scenario.getModeOfEvent());
         String boundary = nvl(scenario.getWithinBoundary());
         String purpose = nvl(scenario.getPurposeOfContact());
         int age = parsePositiveInt(scenario.getAge(), 60);
+        int socialRisk = parseSocialRisk(getExtra(extras, "socialriskfactor", "rf", "socialrisk", "social risk factor"), 0);
+        String kpiTypeOverride = getExtra(extras, "kpi type", "kpi_type", "kpi");
+        String kpiGroupOverride = getExtra(extras, "kpi group", "kpi_group");
 
         String aapRaw = scenario.getAapSessionDate();
         LocalDate aapDate = parseDateFlexible(aapRaw);
@@ -161,6 +166,16 @@ public final class ScenarioGenerationService {
             p.setType(boundary);
             p.setAac(aacId);
             p.setCfs(randomIntInRange(cfsRange));
+            if (socialRisk > 0) {
+                p.setSocialRiskFactor(socialRisk);
+            }
+            if (kpiTypeOverride != null && !kpiTypeOverride.isBlank()) {
+                p.setKpiType(kpiTypeOverride);
+            }
+            if (kpiGroupOverride != null && !kpiGroupOverride.isBlank()) {
+                p.setKpiGroup(kpiGroupOverride);
+            }
+            applyPatientOverrides(p, overrides);
             scenarioPatients.add(p);
             patients.add(p);
             if (i == 0) {
@@ -186,16 +201,16 @@ public final class ScenarioGenerationService {
         if (aapAttendanceCount > 0) {
             List<EventSession> scenarioSessions = generateEventSessionsForScenario(
                     scenarioPatients, aapAttendanceCount, modeOfEvent,
-                    aapRaw, aapDate != null ? aapDate : baseDate, purpose);
+                    aapRaw, aapDate != null ? aapDate : baseDate, purpose, overrides);
             sessions.addAll(scenarioSessions);
         }
 
         List<Encounter> scenarioEncounters = generateEncountersForScenario(
-                scenarioPatients, contactDate != null ? contactDate : baseDate, purpose);
+                scenarioPatients, contactDate != null ? contactDate : baseDate, purpose, overrides);
         encounters.addAll(scenarioEncounters);
 
         List<QuestionnaireResponse> scenarioQuestionnaires = generateQuestionnairesForScenario(
-                scenarioPatients, baseDate);
+                scenarioPatients, baseDate, overrides);
         questionnaires.addAll(scenarioQuestionnaires);
     }
 
@@ -204,7 +219,8 @@ public final class ScenarioGenerationService {
                                                                        String modeOfEvent,
                                                                        String aapRaw,
                                                                        LocalDate aapDate,
-                                                                       String purpose) {
+                                                                       String purpose,
+                                                                       List<ScenarioTestCase.ColumnOverride> overrides) {
         List<EventSession> list = new ArrayList<>();
         if (patients.isEmpty() || aapAttendanceCount <= 0) return List.of();
 
@@ -262,6 +278,7 @@ public final class ScenarioGenerationService {
             s.setEventSessionPatientReferences1(String.join("##", refs));
             s.setAttendedIndicator(true);
             s.setPurposeOfContact(purpose);
+            applyEventOverrides(s, overrides);
             list.add(s);
         }
         if (!list.isEmpty()) {
@@ -273,7 +290,8 @@ public final class ScenarioGenerationService {
 
     private static List<Encounter> generateEncountersForScenario(List<Patient> patients,
                                                                  LocalDate contactDate,
-                                                                 String purpose) {
+                                                                 String purpose,
+                                                                 List<ScenarioTestCase.ColumnOverride> overrides) {
         List<Encounter> list = new ArrayList<>();
         if (patients.isEmpty()) return List.of();
         if (contactDate == null) contactDate = LocalDate.now();
@@ -296,6 +314,7 @@ public final class ScenarioGenerationService {
             e.setEncounterContactedStaffName(staffName);
             e.setEncounterReferredBy(referred[rnd.nextInt(referred.length)]);
             e.setEncounterPatientReference(p.getPatientId());
+            applyEncounterOverrides(e, overrides);
             list.add(e);
         }
         if (!list.isEmpty()) {
@@ -305,7 +324,8 @@ public final class ScenarioGenerationService {
     }
 
     private static List<QuestionnaireResponse> generateQuestionnairesForScenario(List<Patient> patients,
-                                                                                LocalDate baseDate) {
+                                                                                 LocalDate baseDate,
+                                                                                 List<ScenarioTestCase.ColumnOverride> overrides) {
         List<QuestionnaireResponse> list = new ArrayList<>();
         if (patients.isEmpty()) return List.of();
         if (baseDate == null) baseDate = LocalDate.now();
@@ -328,6 +348,7 @@ public final class ScenarioGenerationService {
             qr.setQ9(RandomDataUtil.randomDateBetween(start, end));
             qr.setQ10(String.valueOf(RandomDataUtil.randomInt(1, 5)));
             qr.setQuestionnairePatientReference(p.getPatientId());
+            applyQuestionnaireOverrides(qr, overrides);
             list.add(qr);
         }
         if (!list.isEmpty()) {
@@ -346,6 +367,38 @@ public final class ScenarioGenerationService {
         } catch (NumberFormatException ex) {
             return defaultValue;
         }
+    }
+
+    private static int parseSocialRisk(String raw, int defaultValue) {
+        if (raw == null || raw.isBlank()) return defaultValue;
+        String norm = raw.toLowerCase(Locale.ENGLISH).replaceAll("\\s+", "");
+        if (norm.contains(">1") || norm.contains("gt1")) return 2;
+        if (norm.contains("<1") || norm.contains("=1") || norm.contains("1")) return 1;
+        try {
+            int v = Integer.parseInt(norm.replaceAll("[^0-9-]", ""));
+            return v > 0 ? v : defaultValue;
+        } catch (Exception ignored) {
+            return defaultValue;
+        }
+    }
+
+    private static String getExtra(Map<String, String> extras, String... keys) {
+        if (extras == null || extras.isEmpty()) return "";
+        for (String key : keys) {
+            String normKey = normalizeKey(key);
+            for (Map.Entry<String, String> entry : extras.entrySet()) {
+                String entryNorm = normalizeKey(entry.getKey());
+                if (entryNorm.contains(normKey) || normKey.contains(entryNorm)) {
+                    return entry.getValue();
+                }
+            }
+        }
+        return "";
+    }
+
+    private static String normalizeKey(String key) {
+        if (key == null) return "";
+        return key.toLowerCase(Locale.ENGLISH).replaceAll("[^a-z0-9]+", "");
     }
 
     private static IntRange parseCfsRange(String raw) {
@@ -367,6 +420,91 @@ public final class ScenarioGenerationService {
         int v = parsePositiveInt(raw, 3);
         return new IntRange(v, v);
     }
+
+    private static void applyPatientOverrides(Patient p, List<ScenarioTestCase.ColumnOverride> overrides) {
+        for (ScenarioTestCase.ColumnOverride ov : overrides) {
+            if (!matchesSheet(ov, "patient")) continue;
+            String col = normalizeKey(ov.getColumn());
+            String val = nvl(ov.getValue());
+            switch (col) {
+                case "cfs" -> p.setCfs(parsePositiveInt(val, p.getCfs()));
+                case "rf", "socialriskfactor" -> p.setSocialRiskFactor(parseSocialRisk(val, p.getSocialRiskFactor()));
+                case "kpi", "kpitype", "kpi_type" -> p.setKpiType(val);
+                case "kpigroup", "kpi_group" -> p.setKpiGroup(val);
+                case "aac" -> p.setAac(val);
+                case "type" -> p.setType(val);
+                case "group" -> p.setGroup(parsePositiveInt(val, p.getGroup()));
+                case "patient_postalcode" -> p.setPatientPostalCode(val);
+                case "patient_birthdate" -> p.setPatientBirthdate(val);
+                case "workingremarks", "working_remarks" -> p.setWorkingRemarks(val);
+                default -> { }
+            }
+        }
+    }
+
+    private static void applyEventOverrides(EventSession s, List<ScenarioTestCase.ColumnOverride> overrides) {
+        for (ScenarioTestCase.ColumnOverride ov : overrides) {
+            if (!matchesSheet(ov, "event")) continue;
+            String col = normalizeKey(ov.getColumn());
+            String val = nvl(ov.getValue());
+            switch (col) {
+                case "event_session_mode1" -> s.setEventSessionMode1(val);
+                case "event_session_start_date1" -> s.setEventSessionStartDate1(val);
+                case "event_session_end_date1" -> s.setEventSessionEndDate1(val);
+                case "event_session_venue1" -> s.setEventSessionVenue1(val);
+                case "event_session_capacity1" -> s.setEventSessionCapacity1(parsePositiveInt(val, s.getEventSessionCapacity1()));
+                case "purposeofcontact", "purpose_of_contact" -> s.setPurposeOfContact(val);
+                case "attendedindicator", "attended_indicator" -> s.setAttendedIndicator(val.equalsIgnoreCase("true") || val.equalsIgnoreCase("yes"));
+                default -> { }
+            }
+        }
+    }
+
+    private static void applyEncounterOverrides(Encounter e, List<ScenarioTestCase.ColumnOverride> overrides) {
+        for (ScenarioTestCase.ColumnOverride ov : overrides) {
+            if (!matchesSheet(ov, "encounter")) continue;
+            String col = normalizeKey(ov.getColumn());
+            String val = nvl(ov.getValue());
+            switch (col) {
+                case "encounter_status" -> e.setEncounterStatus(val);
+                case "encounter_purpose" -> e.setEncounterPurpose(val);
+                case "encounter_contacted_staff_name" -> e.setEncounterContactedStaffName(val);
+                case "encounter_referred_by" -> e.setEncounterReferredBy(val);
+                case "encounter_display" -> e.setEncounterDisplay(val);
+                case "encounter_start" -> e.setEncounterStart(val);
+                default -> { }
+            }
+        }
+    }
+
+    private static void applyQuestionnaireOverrides(QuestionnaireResponse qr, List<ScenarioTestCase.ColumnOverride> overrides) {
+        for (ScenarioTestCase.ColumnOverride ov : overrides) {
+            if (!matchesSheet(ov, "questionnaire")) continue;
+            String col = normalizeKey(ov.getColumn());
+            String val = nvl(ov.getValue());
+            switch (col) {
+                case "questionnaire_status" -> qr.setQuestionnaireStatus(val);
+                case "q1" -> qr.setQ1(val);
+                case "q2" -> qr.setQ2(val);
+                case "q3" -> qr.setQ3(val);
+                case "q4" -> qr.setQ4(val);
+                case "q5" -> qr.setQ5(val);
+                case "q6" -> qr.setQ6(val);
+                case "q7" -> qr.setQ7(val);
+                case "q8" -> qr.setQ8(val);
+                case "q9" -> qr.setQ9(val);
+                case "q10" -> qr.setQ10(val);
+                default -> { }
+            }
+        }
+    }
+
+    private static boolean matchesSheet(ScenarioTestCase.ColumnOverride ov, String token) {
+        if (ov == null) return false;
+        String sheet = normalizeKey(ov.getSheet());
+        return sheet.contains(normalizeKey(token));
+    }
+
 
     private static int randomIntInRange(IntRange range) {
         if (range == null) return 3;

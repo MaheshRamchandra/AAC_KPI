@@ -17,6 +17,8 @@ public class ScenarioTestCase {
     private String dateOfContact;
     private String age;
     private String remarks;
+    private java.util.Map<String, String> extraFields = new java.util.LinkedHashMap<>();
+    private java.util.List<ColumnOverride> columnOverrides = new java.util.ArrayList<>();
 
     public ScenarioTestCase() {
     }
@@ -169,5 +171,56 @@ public class ScenarioTestCase {
 
     public void setRemarks(String remarks) {
         this.remarks = remarks;
+    }
+
+    public java.util.Map<String, String> getExtraFields() {
+        return extraFields;
+    }
+
+    public void setExtraFields(java.util.Map<String, String> extraFields) {
+        this.extraFields = extraFields == null ? new java.util.LinkedHashMap<>() : new java.util.LinkedHashMap<>(extraFields);
+    }
+
+    public void putExtraField(String key, String value) {
+        if (extraFields == null) {
+            extraFields = new java.util.LinkedHashMap<>();
+        }
+        extraFields.put(key, value);
+    }
+
+    public java.util.List<ColumnOverride> getColumnOverrides() { return columnOverrides; }
+    public void setColumnOverrides(java.util.List<ColumnOverride> overrides) {
+        this.columnOverrides = overrides == null ? new java.util.ArrayList<>() : new java.util.ArrayList<>(overrides);
+    }
+    public void addColumnOverride(ColumnOverride override) {
+        if (columnOverrides == null) columnOverrides = new java.util.ArrayList<>();
+        columnOverrides.add(override);
+    }
+
+    public static final class ColumnOverride {
+        private String sheet;
+        private String column;
+        private String value;
+
+        public ColumnOverride() {}
+        public ColumnOverride(String sheet, String column, String value) {
+            this.sheet = sheet;
+            this.column = column;
+            this.value = value;
+        }
+
+        public String getSheet() { return sheet; }
+        public void setSheet(String sheet) { this.sheet = sheet; }
+
+        public String getColumn() { return column; }
+        public void setColumn(String column) { this.column = column; }
+
+        public String getValue() { return value; }
+        public void setValue(String value) { this.value = value; }
+
+        @Override
+        public String toString() {
+            return (sheet == null ? "" : sheet) + "." + (column == null ? "" : column) + "=" + (value == null ? "" : value);
+        }
     }
 }

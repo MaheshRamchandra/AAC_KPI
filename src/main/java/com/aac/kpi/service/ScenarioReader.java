@@ -12,6 +12,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -30,28 +32,30 @@ public class ScenarioReader {
              XSSFWorkbook workbook = new XSSFWorkbook(fis)) {
             Sheet sheet = findSheet(workbook);
             if (sheet == null) return List.of();
-            Map<String, Integer> headerIndex = buildHeaderIndex(sheet);
+            HeaderIndex headerIndex = buildHeaderIndex(sheet);
             List<ScenarioTestCase> scenarios = new ArrayList<>();
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
+                Set<Integer> usedColumns = new HashSet<>();
                 ScenarioTestCase scenario = new ScenarioTestCase();
-                scenario.setId(getValue(row, headerIndex, "id"));
-                scenario.setWorkItemType(getValue(row, headerIndex, "workitemtype"));
-                scenario.setTitle(getValue(row, headerIndex, "title"));
-                scenario.setTestStep(getValue(row, headerIndex, "teststep"));
-                scenario.setStepAction(getValue(row, headerIndex, "stepaction", "teststepdetail", "step"));
-                scenario.setStepExpected(getValue(row, headerIndex, "stepexpected", "expected"));
-                scenario.setNumberOfSeniors(getValue(row, headerIndex, "numberofseniors", "seniors"));
-                scenario.setCfs(getValue(row, headerIndex, "cfs"));
-                scenario.setModeOfEvent(getValue(row, headerIndex, "modeofevent", "mode of event"));
-                scenario.setAapSessionDate(getValue(row, headerIndex, "aapsessiondate", "latestaapsessiondate"));
-                scenario.setNumberOfAapAttendance(getValue(row, headerIndex, "noofaapattendanceinperson", "noofaapattendance", "aapattendance"));
-                scenario.setWithinBoundary(getValue(row, headerIndex, "withinoroutofserviceboundary", "boundary"));
-                scenario.setPurposeOfContact(getValue(row, headerIndex, "purposeofcontact"));
-                scenario.setDateOfContact(getValue(row, headerIndex, "dateofcontact", "contactdate"));
-                scenario.setAge(getValue(row, headerIndex, "age"));
-                scenario.setRemarks(getValue(row, headerIndex, "remarks", "others"));
+                scenario.setId(getValue(row, headerIndex, usedColumns, "id"));
+                scenario.setWorkItemType(getValue(row, headerIndex, usedColumns, "workitemtype"));
+                scenario.setTitle(getValue(row, headerIndex, usedColumns, "title"));
+                scenario.setTestStep(getValue(row, headerIndex, usedColumns, "teststep"));
+                scenario.setStepAction(getValue(row, headerIndex, usedColumns, "stepaction", "teststepdetail", "step"));
+                scenario.setStepExpected(getValue(row, headerIndex, usedColumns, "stepexpected", "expected"));
+                scenario.setNumberOfSeniors(getValue(row, headerIndex, usedColumns, "numberofseniors", "seniors"));
+                scenario.setCfs(getValue(row, headerIndex, usedColumns, "cfs"));
+                scenario.setModeOfEvent(getValue(row, headerIndex, usedColumns, "modeofevent", "mode of event"));
+                scenario.setAapSessionDate(getValue(row, headerIndex, usedColumns, "aapsessiondate", "latestaapsessiondate"));
+                scenario.setNumberOfAapAttendance(getValue(row, headerIndex, usedColumns, "noofaapattendanceinperson", "noofaapattendance", "aapattendance"));
+                scenario.setWithinBoundary(getValue(row, headerIndex, usedColumns, "withinoroutofserviceboundary", "boundary"));
+                scenario.setPurposeOfContact(getValue(row, headerIndex, usedColumns, "purposeofcontact"));
+                scenario.setDateOfContact(getValue(row, headerIndex, usedColumns, "dateofcontact", "contactdate"));
+                scenario.setAge(getValue(row, headerIndex, usedColumns, "age"));
+                scenario.setRemarks(getValue(row, headerIndex, usedColumns, "remarks", "others"));
+                scenario.setExtraFields(captureExtraFields(row, headerIndex, usedColumns));
                 if (!isEmptyRow(scenario)) scenarios.add(scenario);
             }
             return scenarios;
@@ -60,9 +64,9 @@ public class ScenarioReader {
 
     private static boolean isEmptyRow(ScenarioTestCase scenario) {
         // Treat a row as a usable scenario if any of the core
-        // Scenario Builder columns has data. This allows sheets
-        // without ID/Title to still be recognised as test cases.
-        return isBlank(scenario.getNumberOfSeniors())
+        // Scenario Builder columns has data, or if the Excel row
+        // contains at least one extra column value.
+        boolean coreEmpty = isBlank(scenario.getNumberOfSeniors())
                 && isBlank(scenario.getCfs())
                 && isBlank(scenario.getModeOfEvent())
                 && isBlank(scenario.getAapSessionDate())
@@ -71,6 +75,8 @@ public class ScenarioReader {
                 && isBlank(scenario.getPurposeOfContact())
                 && isBlank(scenario.getDateOfContact())
                 && isBlank(scenario.getAge());
+        boolean extrasEmpty = scenario.getExtraFields() == null || scenario.getExtraFields().isEmpty();
+        return coreEmpty && extrasEmpty;
     }
 
     private static Sheet findSheet(XSSFWorkbook workbook) {
@@ -81,39 +87,58 @@ public class ScenarioReader {
         return workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
     }
 
-    private static Map<String, Integer> buildHeaderIndex(Sheet sheet) {
-        Map<String, Integer> headerIndex = new HashMap<>();
+    private static HeaderIndex buildHeaderIndex(Sheet sheet) {
+        HeaderIndex headerIndex = new HeaderIndex();
         Row header = sheet.getRow(0);
         if (header == null) return headerIndex;
         for (int i = 0; i < header.getLastCellNum(); i++) {
             String raw = getString(header, i);
             if (raw.isBlank()) continue;
-            headerIndex.put(normalize(raw), i);
+            headerIndex.byKey.put(normalize(raw), i);
+            headerIndex.rawByIndex.put(i, raw.trim());
         }
         return headerIndex;
     }
 
-    private static String getValue(Row row, Map<String, Integer> headerIndex, String... keys) {
+    private static String getValue(Row row, HeaderIndex headerIndex, Set<Integer> usedColumns, String... keys) {
         for (String key : keys) {
             String normKey = normalize(key);
             // First try exact normalized header match
-            Integer idx = headerIndex.get(normKey);
+            Integer idx = headerIndex.byKey.get(normKey);
             if (idx != null) {
                 String value = getString(row, idx);
-                if (!value.isBlank()) return value;
+                if (!value.isBlank()) {
+                    usedColumns.add(idx);
+                    return value;
+                }
             }
             // Fallback: allow headers that contain the search token, so
             // columns like "AAP Session Date (Listed date is the latest AAP attended)"
             // still match the simpler "AAP Session Date" key.
-            for (Map.Entry<String, Integer> entry : headerIndex.entrySet()) {
+            for (Map.Entry<String, Integer> entry : headerIndex.byKey.entrySet()) {
                 String headerKey = entry.getKey();
                 if (headerKey.contains(normKey) || normKey.contains(headerKey)) {
                     String value = getString(row, entry.getValue());
-                    if (!value.isBlank()) return value;
+                    if (!value.isBlank()) {
+                        usedColumns.add(entry.getValue());
+                        return value;
+                    }
                 }
             }
         }
         return "";
+    }
+
+    private static Map<String, String> captureExtraFields(Row row, HeaderIndex headerIndex, Set<Integer> usedColumns) {
+        Map<String, String> extras = new LinkedHashMap<>();
+        for (Map.Entry<Integer, String> entry : headerIndex.rawByIndex.entrySet()) {
+            int idx = entry.getKey();
+            if (usedColumns.contains(idx)) continue;
+            String value = getString(row, idx);
+            if (value.isBlank()) continue;
+            extras.put(entry.getValue(), value);
+        }
+        return extras;
     }
 
     private static String getString(Row row, int col) {
@@ -129,5 +154,10 @@ public class ScenarioReader {
 
     private static boolean isBlank(String s) {
         return s == null || s.isBlank();
+    }
+
+    private static final class HeaderIndex {
+        private final Map<String, Integer> byKey = new HashMap<>();
+        private final Map<Integer, String> rawByIndex = new HashMap<>();
     }
 }

@@ -174,6 +174,1208 @@
       "description": ""
     },
     {
+      "name": "Common: aac_report",
+      "columns": [
+        {
+          "name": "S.No",
+          "dataType": "text",
+          "format": "prefixed-seq",
+          "logicType": "generated",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "aac_report_<row> synthetic id per AAC center",
+          "previewPattern": "aac_report_1",
+          "delimiter": ""
+        },
+        {
+          "name": "composition_id",
+          "dataType": "text",
+          "format": "uuid32",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "RandomDataUtil.uuid32() uppercase",
+          "previewPattern": "A1B2C3UUID",
+          "delimiter": ""
+        },
+        {
+          "name": "version_id",
+          "dataType": "number",
+          "format": "int",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "always 1",
+          "previewPattern": "1",
+          "delimiter": ""
+        },
+        {
+          "name": "last_updated",
+          "dataType": "datetime",
+          "format": "iso+08:00",
+          "logicType": "timestamp",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "nowIsoOffset(+08:00)",
+          "previewPattern": "2025-04-15T10:00:00+08:00",
+          "delimiter": ""
+        },
+        {
+          "name": "meta_code",
+          "dataType": "text",
+          "format": "uuid20",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "RandomDataUtil.uuid32().substring(0,20)",
+          "previewPattern": "META_UUID20",
+          "delimiter": ""
+        },
+        {
+          "name": "extension_reporting_month",
+          "dataType": "text",
+          "format": "yyyy-MM",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_start_date1",
+          "transform": "latest session month per AAC (fallback current month)",
+          "previewPattern": "2025-04",
+          "delimiter": ""
+        },
+        {
+          "name": "extension_total_operating_days",
+          "dataType": "number",
+          "format": "int",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "constant 240 days",
+          "previewPattern": "240",
+          "delimiter": ""
+        },
+        {
+          "name": "extension_total_clients",
+          "dataType": "number",
+          "format": "int",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "AAC",
+          "transform": "count of patients grouped by AAC",
+          "previewPattern": "32",
+          "delimiter": ""
+        },
+        {
+          "name": "status",
+          "dataType": "text",
+          "format": "code",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "final",
+          "previewPattern": "final",
+          "delimiter": ""
+        },
+        {
+          "name": "date",
+          "dataType": "datetime",
+          "format": "iso+08:00",
+          "logicType": "timestamp",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "nowIsoOffset(+08:00)",
+          "previewPattern": "2025-04-15T10:00:00+08:00",
+          "delimiter": ""
+        },
+        {
+          "name": "author_value",
+          "dataType": "text",
+          "format": "aac_id",
+          "logicType": "derived",
+          "sourceSheet": "Master Data",
+          "sourceColumn": "aac_center_id",
+          "transform": "AAC center id from MasterDataService",
+          "previewPattern": "AAC01",
+          "delimiter": ""
+        },
+        {
+          "name": "author_display",
+          "dataType": "text",
+          "format": "aac_name",
+          "logicType": "derived",
+          "sourceSheet": "Master Data",
+          "sourceColumn": "aac_center_name",
+          "transform": "AAC center label (Active Ageing Centre <digits>)",
+          "previewPattern": "Active Ageing Centre 01",
+          "delimiter": ""
+        },
+        {
+          "name": "practitioner_references",
+          "dataType": "text",
+          "format": "list##uuid",
+          "logicType": "derived",
+          "sourceSheet": "Practitioner Master",
+          "sourceColumn": "practitioner_id",
+          "transform": "subset of practitioner ids per AAC (1-3, ##-delimited)",
+          "previewPattern": "PR001##PR002",
+          "delimiter": ""
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Common: resident_report",
+      "columns": [
+        {
+          "name": "S. No",
+          "dataType": "text",
+          "format": "prefixed-seq",
+          "logicType": "generated",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "resident_report_<row> synthetic id per CommonRow",
+          "previewPattern": "resident_report_1",
+          "delimiter": ""
+        },
+        {
+          "name": "composition_id",
+          "dataType": "text",
+          "format": "uuid32",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "RandomDataUtil.uuid32() for CommonRow",
+          "previewPattern": "UUID32",
+          "delimiter": ""
+        },
+        {
+          "name": "version_id",
+          "dataType": "number",
+          "format": "int",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "always 1",
+          "previewPattern": "1",
+          "delimiter": ""
+        },
+        {
+          "name": "last_updated",
+          "dataType": "datetime",
+          "format": "iso+08:00",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_end_date1",
+          "transform": "latest attended session end per patient (fallback now)",
+          "previewPattern": "2025-05-01T09:00:00+08:00",
+          "delimiter": ""
+        },
+        {
+          "name": "meta_code",
+          "dataType": "text",
+          "format": "uuid",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "CommonRow.metaCode random token",
+          "previewPattern": "META1234",
+          "delimiter": ""
+        },
+        {
+          "name": "extension_reporting_month",
+          "dataType": "text",
+          "format": "yyyy-MM",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_start_date1",
+          "transform": "month of latest attended session (fallback CommonRow.reportingMonth)",
+          "previewPattern": "2025-05",
+          "delimiter": ""
+        },
+        {
+          "name": "status",
+          "dataType": "text",
+          "format": "code",
+          "logicType": "derived",
+          "sourceSheet": "Common",
+          "sourceColumn": "status",
+          "transform": "CommonRow status (default final)",
+          "previewPattern": "final",
+          "delimiter": ""
+        },
+        {
+          "name": "date",
+          "dataType": "datetime",
+          "format": "iso+08:00",
+          "logicType": "derived",
+          "sourceSheet": "Common",
+          "sourceColumn": "last_updated",
+          "transform": "ISO offset of last_updated",
+          "previewPattern": "2025-05-01T09:00:00+08:00",
+          "delimiter": ""
+        },
+        {
+          "name": "author_value",
+          "dataType": "text",
+          "format": "aac_id",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "AAC",
+          "transform": "patient AAC id",
+          "previewPattern": "AAC01",
+          "delimiter": ""
+        },
+        {
+          "name": "author_display",
+          "dataType": "text",
+          "format": "aac_label",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "AAC",
+          "transform": "Active Ageing Centre label from AAC id",
+          "previewPattern": "Active Ageing Centre 01",
+          "delimiter": ""
+        },
+        {
+          "name": "resident_volunteer_status",
+          "dataType": "text",
+          "format": "flag",
+          "logicType": "default",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "CommonRow flag (default TRUE)",
+          "previewPattern": "TRUE",
+          "delimiter": ""
+        },
+        {
+          "name": "cst_date",
+          "dataType": "date",
+          "format": "yyyy-MM-dd",
+          "logicType": "default",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "CommonRow cst_date or 2025-12-31",
+          "previewPattern": "2025-12-31",
+          "delimiter": ""
+        },
+        {
+          "name": "cfs",
+          "dataType": "text",
+          "format": "range-label",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "CFS",
+          "transform": "CFS label via CfsUtil (1-3/4-5 etc.)",
+          "previewPattern": "1-3",
+          "delimiter": ""
+        },
+        {
+          "name": "social_risk_factor_score",
+          "dataType": "text",
+          "format": "label",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "RF",
+          "transform": "RF mapped to 1 or >1",
+          "previewPattern": ">1",
+          "delimiter": ""
+        },
+        {
+          "name": "aap_recommendation",
+          "dataType": "text",
+          "format": "kpi_type",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "KPI Type",
+          "transform": "from patient.kpiType",
+          "previewPattern": "AAP Robust",
+          "delimiter": ""
+        },
+        {
+          "name": "social_support_recommendation",
+          "dataType": "text",
+          "format": "kpi_group",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "KPI Group",
+          "transform": "from patient.kpiGroup",
+          "previewPattern": "Befriender",
+          "delimiter": ""
+        },
+        {
+          "name": "aac_opt_out_status",
+          "dataType": "text",
+          "format": "flag",
+          "logicType": "default",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "defaults to TRUE if blank",
+          "previewPattern": "TRUE",
+          "delimiter": ""
+        },
+        {
+          "name": "aap_opt_out_status",
+          "dataType": "text",
+          "format": "flag",
+          "logicType": "default",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "defaults to TRUE if blank",
+          "previewPattern": "TRUE",
+          "delimiter": ""
+        },
+        {
+          "name": "screening_declaration_date",
+          "dataType": "date",
+          "format": "yyyy-MM-dd",
+          "logicType": "default",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "CommonRow value or 2025-12-31",
+          "previewPattern": "2025-12-31",
+          "delimiter": ""
+        },
+        {
+          "name": "befriending_opt_out_status",
+          "dataType": "text",
+          "format": "flag",
+          "logicType": "default",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "defaults to TRUE if blank",
+          "previewPattern": "TRUE",
+          "delimiter": ""
+        },
+        {
+          "name": "buddying_opt_out_status",
+          "dataType": "text",
+          "format": "flag",
+          "logicType": "default",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "defaults to TRUE if blank",
+          "previewPattern": "TRUE",
+          "delimiter": ""
+        },
+        {
+          "name": "resident_befriending_programme_period_start",
+          "dataType": "date",
+          "format": "yyyy-MM-dd",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_start_date1",
+          "transform": "earliest attended session or patient befriendingProgramStartDate",
+          "previewPattern": "2025-04-01",
+          "delimiter": ""
+        },
+        {
+          "name": "resident_befriending_programme_period_end",
+          "dataType": "date",
+          "format": "yyyy-MM-dd",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_end_date1",
+          "transform": "latest attended session or patient befriendingProgramEndDate",
+          "previewPattern": "2026-03-31",
+          "delimiter": ""
+        },
+        {
+          "name": "resident_buddying_programme_period_start",
+          "dataType": "date",
+          "format": "yyyy-MM-dd",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_start_date1",
+          "transform": "earliest attended session or patient buddyingProgramStartDate",
+          "previewPattern": "2025-04-01",
+          "delimiter": ""
+        },
+        {
+          "name": "resident_buddying_programme_period_end",
+          "dataType": "date",
+          "format": "yyyy-MM-dd",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_end_date1",
+          "transform": "latest attended session or patient buddyingProgramEndDate",
+          "previewPattern": "2026-03-31",
+          "delimiter": ""
+        },
+        {
+          "name": "irms_referral_raised_date",
+          "dataType": "date",
+          "format": "yyyy-MM-dd",
+          "logicType": "derived",
+          "sourceSheet": "Encounter (Master)",
+          "sourceColumn": "encounter_start",
+          "transform": "earliest finished encounter for patient",
+          "previewPattern": "2025-04-01",
+          "delimiter": ""
+        },
+        {
+          "name": "irms_referral_accepted_date",
+          "dataType": "date",
+          "format": "yyyy-MM-dd",
+          "logicType": "derived",
+          "sourceSheet": "Encounter (Master)",
+          "sourceColumn": "encounter_start",
+          "transform": "latest finished encounter for patient",
+          "previewPattern": "2025-04-15",
+          "delimiter": ""
+        },
+        {
+          "name": "asg_referral_raised_by",
+          "dataType": "text",
+          "format": "staff_name",
+          "logicType": "derived",
+          "sourceSheet": "Encounter (Master)",
+          "sourceColumn": "encounter_contacted_staff_name",
+          "transform": "staff from encounter or default Mr Staff A",
+          "previewPattern": "Mr Staff A",
+          "delimiter": ""
+        },
+        {
+          "name": "asg_referral_accepted_by",
+          "dataType": "text",
+          "format": "staff_name",
+          "logicType": "derived",
+          "sourceSheet": "Encounter (Master)",
+          "sourceColumn": "encounter_contacted_staff_name",
+          "transform": "staff from encounter or default Mr Staff A",
+          "previewPattern": "Mr Staff A",
+          "delimiter": ""
+        },
+        {
+          "name": "patient_reference",
+          "dataType": "text",
+          "format": "uuid",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "patient_id",
+          "transform": "patient_id or patient_identifier_value",
+          "previewPattern": "PAT123",
+          "delimiter": ""
+        },
+        {
+          "name": "encounter_references",
+          "dataType": "text",
+          "format": "list##uuid",
+          "logicType": "derived",
+          "sourceSheet": "Encounter (Master)",
+          "sourceColumn": "encounter_id",
+          "transform": "finished encounters with allowed purposes (##-delimited)",
+          "previewPattern": "ENC1##ENC2",
+          "delimiter": ""
+        },
+        {
+          "name": "questionnaire_reference",
+          "dataType": "text",
+          "format": "uuid",
+          "logicType": "derived",
+          "sourceSheet": "Questionnaire Response",
+          "sourceColumn": "questionnaire_id",
+          "transform": "latest completed questionnaire_id for patient",
+          "previewPattern": "QNR123",
+          "delimiter": ""
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Common: volunteer_attendance_report",
+      "columns": [
+        {
+          "name": "S.No",
+          "dataType": "text",
+          "format": "prefixed-seq",
+          "logicType": "generated",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "volunteer_attendance_report_<row>",
+          "previewPattern": "volunteer_attendance_report_1",
+          "delimiter": ""
+        },
+        {
+          "name": "composition_id",
+          "dataType": "text",
+          "format": "uuid32",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "RandomDataUtil.uuid32() uppercase",
+          "previewPattern": "UUID32",
+          "delimiter": ""
+        },
+        {
+          "name": "version_id",
+          "dataType": "number",
+          "format": "int",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "always 1",
+          "previewPattern": "1",
+          "delimiter": ""
+        },
+        {
+          "name": "last_updated",
+          "dataType": "datetime",
+          "format": "iso+08:00",
+          "logicType": "timestamp",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "nowIsoOffset(+08:00)",
+          "previewPattern": "2025-04-15T10:00:00+08:00",
+          "delimiter": ""
+        },
+        {
+          "name": "meta_code",
+          "dataType": "text",
+          "format": "uuid20",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "RandomDataUtil.uuid32().substring(0,20)",
+          "previewPattern": "META_UUID20",
+          "delimiter": ""
+        },
+        {
+          "name": "extension_reporting_month",
+          "dataType": "text",
+          "format": "yyyy-MM",
+          "logicType": "timestamp",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "current month for run",
+          "previewPattern": "2025-04",
+          "delimiter": ""
+        },
+        {
+          "name": "status",
+          "dataType": "text",
+          "format": "code",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "final",
+          "previewPattern": "final",
+          "delimiter": ""
+        },
+        {
+          "name": "date",
+          "dataType": "datetime",
+          "format": "iso+08:00",
+          "logicType": "timestamp",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "nowIsoOffset(+08:00)",
+          "previewPattern": "2025-04-15T10:00:00+08:00",
+          "delimiter": ""
+        },
+        {
+          "name": "author_value",
+          "dataType": "text",
+          "format": "aac_id",
+          "logicType": "derived",
+          "sourceSheet": "Master Data",
+          "sourceColumn": "aac_center_id",
+          "transform": "AAC id from center/patient",
+          "previewPattern": "AAC01",
+          "delimiter": ""
+        },
+        {
+          "name": "author_display",
+          "dataType": "text",
+          "format": "aac_label",
+          "logicType": "derived",
+          "sourceSheet": "Master Data",
+          "sourceColumn": "aac_center_name",
+          "transform": "Active Ageing Centre label",
+          "previewPattern": "Active Ageing Centre 01",
+          "delimiter": ""
+        },
+        {
+          "name": "practitioner_references",
+          "dataType": "text",
+          "format": "list##uuid",
+          "logicType": "derived",
+          "sourceSheet": "Practitioner Master",
+          "sourceColumn": "practitioner_id",
+          "transform": "subset of practitioner ids sized by requested count",
+          "previewPattern": "PR001##PR002",
+          "delimiter": ""
+        },
+        {
+          "name": "number_of_practitioners",
+          "dataType": "number",
+          "format": "int",
+          "logicType": "derived",
+          "sourceSheet": "Practitioner Master",
+          "sourceColumn": "practitioner_id",
+          "transform": "count of practitioner_references",
+          "previewPattern": "2",
+          "delimiter": ""
+        },
+        {
+          "name": "volunteered_activity_name_practitionerN",
+          "dataType": "text",
+          "format": "label",
+          "logicType": "default",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "one column per requested practitioner; default \"Painting class\"",
+          "previewPattern": "Painting class",
+          "delimiter": ""
+        },
+        {
+          "name": "volunteered_activity_date_practitionerN",
+          "dataType": "date",
+          "format": "yyyy-MM-dd",
+          "logicType": "default",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "one column per requested practitioner; default 2024-02-11",
+          "previewPattern": "2024-02-11",
+          "delimiter": ""
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Common: event_report",
+      "columns": [
+        {
+          "name": "S. No",
+          "dataType": "text",
+          "format": "prefixed-seq",
+          "logicType": "generated",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "event_report_<row> synthetic id per event session",
+          "previewPattern": "event_report_1",
+          "delimiter": ""
+        },
+        {
+          "name": "composition_id",
+          "dataType": "text",
+          "format": "uuid32",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "composition_id",
+          "transform": "sanitized composition_id",
+          "previewPattern": "EVT123",
+          "delimiter": ""
+        },
+        {
+          "name": "version_id",
+          "dataType": "number",
+          "format": "int",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "always 1",
+          "previewPattern": "1",
+          "delimiter": ""
+        },
+        {
+          "name": "last_updated",
+          "dataType": "datetime",
+          "format": "iso+08:00",
+          "logicType": "timestamp",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "nowIsoOffset(+08:00)",
+          "previewPattern": "2025-04-15T10:00:00+08:00",
+          "delimiter": ""
+        },
+        {
+          "name": "meta_code",
+          "dataType": "text",
+          "format": "uuid20",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "RandomDataUtil.uuid32().substring(0,20)",
+          "previewPattern": "META_UUID20",
+          "delimiter": ""
+        },
+        {
+          "name": "extension_reporting_month",
+          "dataType": "text",
+          "format": "yyyy-MM",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_start_date1",
+          "transform": "earliest session month for event_id",
+          "previewPattern": "2025-04",
+          "delimiter": ""
+        },
+        {
+          "name": "status",
+          "dataType": "text",
+          "format": "code",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "completed",
+          "previewPattern": "completed",
+          "delimiter": ""
+        },
+        {
+          "name": "date",
+          "dataType": "datetime",
+          "format": "iso+08:00",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_start_date1",
+          "transform": "earliest start date in ISO offset",
+          "previewPattern": "2025-04-10T09:00:00+08:00",
+          "delimiter": ""
+        },
+        {
+          "name": "author_value",
+          "dataType": "text",
+          "format": "aac_id",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "AAC",
+          "transform": "AAC of first attendee or practitioner fallback",
+          "previewPattern": "AAC01",
+          "delimiter": ""
+        },
+        {
+          "name": "author_display",
+          "dataType": "text",
+          "format": "aac_label",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "AAC",
+          "transform": "Active Ageing Centre label from author_value",
+          "previewPattern": "Active Ageing Centre 01",
+          "delimiter": ""
+        },
+        {
+          "name": "event_id",
+          "dataType": "text",
+          "format": "alphanumeric",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_id1",
+          "transform": "sanitized event_session_id1",
+          "previewPattern": "EVT001",
+          "delimiter": ""
+        },
+        {
+          "name": "event_name",
+          "dataType": "text",
+          "format": "label",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_id1",
+          "transform": "event_id without digits or venue fallback",
+          "previewPattern": "Community Walk",
+          "delimiter": ""
+        },
+        {
+          "name": "event_type",
+          "dataType": "text",
+          "format": "label",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "KPI Type",
+          "transform": "majority KPI type of attending patients",
+          "previewPattern": "Robust",
+          "delimiter": ""
+        },
+        {
+          "name": "event_domain",
+          "dataType": "text",
+          "format": "code",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "Community Well-Being",
+          "previewPattern": "Community Well-Being",
+          "delimiter": ""
+        },
+        {
+          "name": "event_target_attendees",
+          "dataType": "text",
+          "format": "label",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "KPI Type",
+          "transform": "AAC <event_type> string",
+          "previewPattern": "AAC Robust",
+          "delimiter": ""
+        },
+        {
+          "name": "event_category",
+          "dataType": "text",
+          "format": "label",
+          "logicType": "derived",
+          "sourceSheet": "Rules",
+          "sourceColumn": "event_report_label",
+          "transform": "derived from event_type or UI override",
+          "previewPattern": "Physical",
+          "delimiter": ""
+        },
+        {
+          "name": "aap_provider",
+          "dataType": "text",
+          "format": "aac_id",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "AAC",
+          "transform": "AAC of first attendee",
+          "previewPattern": "AAC01",
+          "delimiter": ""
+        },
+        {
+          "name": "minimum_required_sessions",
+          "dataType": "number",
+          "format": "int",
+          "logicType": "derived",
+          "sourceSheet": "Patient (Master)",
+          "sourceColumn": "KPI Type",
+          "transform": "Robust=1, Budding=12, Befriending=52",
+          "previewPattern": "12",
+          "delimiter": ""
+        },
+        {
+          "name": "event_is_gui",
+          "dataType": "text",
+          "format": "flag",
+          "logicType": "default",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "default FALSE",
+          "previewPattern": "FALSE",
+          "delimiter": ""
+        },
+        {
+          "name": "gui_partner",
+          "dataType": "text",
+          "format": "label",
+          "logicType": "default",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "blank partner placeholder",
+          "previewPattern": "",
+          "delimiter": ""
+        },
+        {
+          "name": "number_of_event_sessions",
+          "dataType": "number",
+          "format": "int",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_id1",
+          "transform": "count sessions per event_id",
+          "previewPattern": "3",
+          "delimiter": ""
+        },
+        {
+          "name": "patient_references",
+          "dataType": "text",
+          "format": "list##uuid",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_patient_references1",
+          "transform": "unique attended patient ids (##-delimited)",
+          "previewPattern": "PAT1##PAT2",
+          "delimiter": ""
+        },
+        {
+          "name": "total_patient_references",
+          "dataType": "number",
+          "format": "int",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_patient_references1",
+          "transform": "size of attended patient list",
+          "previewPattern": "2",
+          "delimiter": ""
+        },
+        {
+          "name": "is_attended_session_patient1",
+          "dataType": "text",
+          "format": "flag",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_patient_references1",
+          "transform": "repeated TRUE/blank columns up to max attendee slots",
+          "previewPattern": "TRUE",
+          "delimiter": ""
+        },
+        {
+          "name": "Working Remarks",
+          "dataType": "text",
+          "format": "free-text",
+          "logicType": "user_input",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "left blank, highlighted for manual notes",
+          "previewPattern": "",
+          "delimiter": ""
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Common: organization_report",
+      "columns": [
+        {
+          "name": "S. No",
+          "dataType": "text",
+          "format": "prefixed-seq",
+          "logicType": "generated",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "organization_report_<row>",
+          "previewPattern": "organization_report_1",
+          "delimiter": ""
+        },
+        {
+          "name": "id",
+          "dataType": "text",
+          "format": "organization_id",
+          "logicType": "derived",
+          "sourceSheet": "Master Data",
+          "sourceColumn": "organization_id",
+          "transform": "organizationId from master data",
+          "previewPattern": "ORG01",
+          "delimiter": ""
+        },
+        {
+          "name": "version_id",
+          "dataType": "number",
+          "format": "int",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "always 1",
+          "previewPattern": "1",
+          "delimiter": ""
+        },
+        {
+          "name": "last_updated",
+          "dataType": "datetime",
+          "format": "iso+08:00",
+          "logicType": "timestamp",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "nowIsoOffset(+08:00)",
+          "previewPattern": "2025-04-15T10:00:00+08:00",
+          "delimiter": ""
+        },
+        {
+          "name": "meta_code",
+          "dataType": "text",
+          "format": "uuid20",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "RandomDataUtil.uuid32().substring(0,20)",
+          "previewPattern": "META_UUID20",
+          "delimiter": ""
+        },
+        {
+          "name": "start",
+          "dataType": "date",
+          "format": "yyyy-MM-dd",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_start_date1",
+          "transform": "earliest session start across organization AACs",
+          "previewPattern": "2025-04-01",
+          "delimiter": ""
+        },
+        {
+          "name": "end",
+          "dataType": "date",
+          "format": "yyyy-MM-dd",
+          "logicType": "derived",
+          "sourceSheet": "Event Session",
+          "sourceColumn": "event_session_end_date1",
+          "transform": "latest session end across organization AACs",
+          "previewPattern": "2026-03-31",
+          "delimiter": ""
+        },
+        {
+          "name": "aac_center_ids",
+          "dataType": "text",
+          "format": "list##aac",
+          "logicType": "derived",
+          "sourceSheet": "Master Data",
+          "sourceColumn": "aac_center_id",
+          "transform": "##-joined AAC ids for organization",
+          "previewPattern": "AAC01##AAC02",
+          "delimiter": ""
+        },
+        {
+          "name": "uen",
+          "dataType": "text",
+          "format": "uen",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "RandomDataUtil.randomUen()",
+          "previewPattern": "202512345A",
+          "delimiter": ""
+        },
+        {
+          "name": "active",
+          "dataType": "text",
+          "format": "flag",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "TRUE",
+          "previewPattern": "TRUE",
+          "delimiter": ""
+        },
+        {
+          "name": "organization_type_code",
+          "dataType": "text",
+          "format": "code",
+          "logicType": "derived",
+          "sourceSheet": "Master Data",
+          "sourceColumn": "organization_type",
+          "transform": "organizationType from master data",
+          "previewPattern": "AAC",
+          "delimiter": ""
+        },
+        {
+          "name": "organization_type_display",
+          "dataType": "text",
+          "format": "label",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "AAC",
+          "previewPattern": "AAC",
+          "delimiter": ""
+        },
+        {
+          "name": "name",
+          "dataType": "text",
+          "format": "label",
+          "logicType": "derived",
+          "sourceSheet": "Master Data",
+          "sourceColumn": "aac_center_name",
+          "transform": "##-joined AAC center names",
+          "previewPattern": "Active Ageing Centre 01##02",
+          "delimiter": ""
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Common: location_report",
+      "columns": [
+        {
+          "name": "S. No",
+          "dataType": "text",
+          "format": "prefixed-seq",
+          "logicType": "generated",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "location_report_<row>",
+          "previewPattern": "location_report_1",
+          "delimiter": ""
+        },
+        {
+          "name": "id",
+          "dataType": "text",
+          "format": "uuid32",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "RandomDataUtil.uuid32() uppercase",
+          "previewPattern": "UUID32",
+          "delimiter": ""
+        },
+        {
+          "name": "version_id",
+          "dataType": "number",
+          "format": "int",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "always 1",
+          "previewPattern": "1",
+          "delimiter": ""
+        },
+        {
+          "name": "last_updated",
+          "dataType": "datetime",
+          "format": "iso+08:00",
+          "logicType": "timestamp",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "nowIsoOffset(+08:00)",
+          "previewPattern": "2025-04-15T10:00:00+08:00",
+          "delimiter": ""
+        },
+        {
+          "name": "meta_code",
+          "dataType": "text",
+          "format": "uuid20",
+          "logicType": "random",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "RandomDataUtil.uuid32().substring(0,20)",
+          "previewPattern": "META_UUID20",
+          "delimiter": ""
+        },
+        {
+          "name": "start",
+          "dataType": "date",
+          "format": "yyyy-MM-dd",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "FY start 2025-04-01",
+          "previewPattern": "2025-04-01",
+          "delimiter": ""
+        },
+        {
+          "name": "end",
+          "dataType": "date",
+          "format": "yyyy-MM-dd",
+          "logicType": "fixed",
+          "sourceSheet": "",
+          "sourceColumn": "",
+          "transform": "FY end 2026-03-31",
+          "previewPattern": "2026-03-31",
+          "delimiter": ""
+        },
+        {
+          "name": "postal_code",
+          "dataType": "text",
+          "format": "postal-6",
+          "logicType": "derived",
+          "sourceSheet": "Master Data",
+          "sourceColumn": "location_postal_code",
+          "transform": "postal code from master data location",
+          "previewPattern": "123456",
+          "delimiter": ""
+        },
+        {
+          "name": "reference",
+          "dataType": "text",
+          "format": "url",
+          "logicType": "derived",
+          "sourceSheet": "Master Data",
+          "sourceColumn": "organization_id",
+          "transform": "https://pophealth.healthdpx.com/Organisation/<orgId>",
+          "previewPattern": "https://pophealth.healthdpx.com/Organisation/ORG01",
+          "delimiter": ""
+        }
+      ],
+      "description": ""
+    },
+    {
       "name": "Common",
       "columns": [
         {
