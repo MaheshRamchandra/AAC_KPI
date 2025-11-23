@@ -5,7 +5,6 @@ import com.aac.kpi.controller.JsonExportController;
 import com.aac.kpi.controller.JsonCsvController;
 import com.aac.kpi.controller.MasterDataController;
 import com.aac.kpi.controller.PatientMasterController;
-import com.aac.kpi.controller.RulesMlController;
 import com.aac.kpi.controller.ScenarioBuilderController;
 import com.aac.kpi.model.CommonRow;
 import com.aac.kpi.model.EventSession;
@@ -63,11 +62,13 @@ public class MainController {
     @FXML
     private Tab jsonCsvTab;
     @FXML
-    private Tab rulesTab;
-    @FXML
     private Tab userGuideTab;
     @FXML
     private Tab masterDataTab;
+    @FXML
+    private Tab aiTab;
+    @FXML
+    private Tab logicGraphTab;
     @FXML
     private Label statusLabel;
 
@@ -90,7 +91,8 @@ public class MainController {
     private JsonCsvController jsonCsvController;
     private MasterDataController masterDataController;
     private ScenarioBuilderController scenarioController;
-    private RulesMlController rulesMlController;
+    private com.aac.kpi.controller.LogicGraphController logicGraphController;
+    private com.aac.kpi.controller.AiOverlayController aiOverlayController;
 
     @FXML
     private void initialize() throws IOException {
@@ -162,11 +164,17 @@ public class MainController {
         jsonCsvController = jsonCsvLoader.getController();
         jsonCsvTab.setContent(jsonCsvRoot);
 
-        FXMLLoader rulesLoader = new FXMLLoader(getClass().getResource("/com/aac/kpi/RulesMlView.fxml"));
-        Node rulesRoot = rulesLoader.load();
-        rulesMlController = rulesLoader.getController();
-        rulesMlController.init(patients, sessions);
-        rulesTab.setContent(rulesRoot);
+        FXMLLoader logicGraphLoader = new FXMLLoader(getClass().getResource("/com/aac/kpi/LogicGraphView.fxml"));
+        Node logicGraphRoot = logicGraphLoader.load();
+        logicGraphController = logicGraphLoader.getController();
+        logicGraphController.init(patients, sessions, encounters, questionnaires, commonRows, scenarios);
+        logicGraphTab.setContent(logicGraphRoot);
+
+        FXMLLoader aiLoader = new FXMLLoader(getClass().getResource("/com/aac/kpi/AiOverlayView.fxml"));
+        Node aiRoot = aiLoader.load();
+        aiOverlayController = aiLoader.getController();
+        aiOverlayController.init(patients, sessions, encounters, questionnaires, commonRows, scenarios);
+        aiTab.setContent(aiRoot);
 
         FXMLLoader mdLoader = new FXMLLoader(getClass().getResource("/com/aac/kpi/MasterDataView.fxml"));
         Node mdRoot = mdLoader.load();

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Logic Mind Map</title>
+    <script>
+        <!-- MIND_ELIXIR_JS -->
+    </script>
+    <script>
+        <!-- DOM_TO_IMAGE_JS -->
+    </script>
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f8fafc;
+        }
+        .highlight {
+            outline: 2px solid #ef5350;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="status" style="position:absolute;top:8px;right:12px;font-size:12px;color:#607d8b;background:#e3f2fd;padding:6px 10px;border-radius:6px;display:none;"></div>
+<script>
+    let mind;
+    let graphData = {nodes: [], edges: []};
+    const MindElixirLib = window.MindElixir && window.MindElixir.default ? window.MindElixir.default : window.MindElixir;
+
+    function ensureMind() {
+        if (mind) return mind;
+        if (!MindElixirLib) {
+            showStatus('MindElixir not loaded; using fallback tree view.');
+            return null;
+        }
+        mind = new MindElixirLib({
+            el: '#map',
+            direction: MindElixir.LEFT_RIGHT,
+            draggable: true,
+            contextMenu: false,
+            toolBar: false,
+            keypress: false,
+            allowUndo: false,
+            allowDrag: true,
+        });
+        mind.bus.addListener('selectNode', node => {
+            if (node && window.javaBridge && window.javaBridge.onNodeClick) {
+                window.javaBridge.onNodeClick(node.id);
+            }
+        });
+        showStatus('');
+        return mind;
+    }
+
+    function buildTree(data) {
+        const sheets = data.nodes.filter(n => n.type === 'sheet');
+        const columns = data.nodes.filter(n => n.type === 'column');
+        const rules = data.nodes.filter(n => n.type === 'rule');
+        const deps = (data.edges || []).filter(e => e.kind === 'dependency');
+
+        const root = {
+            id: 'root',
+            topic: 'Workbook Logic Map',
+            children: []
+        };
+        sheets.forEach(s => {
+            const sheetNode = {
+                id: s.id,
+                topic: s.label,
+                children: []
+            };
+            columns.filter(c => c.sheet === s.label || c.sheet === s.id.replace('sheet|','')).forEach(col => {
+                const colNode = {
+                    id: col.id,
+                    topic: `${col.label} (${col.dataType || ''} • ${col.logicType || ''})`,
+                    children: []
+                };
+                rules.filter(r => r.sheet === s.label && r.column === col.label).forEach(r => {
+                    colNode.children.push({
+                        id: r.id,
+                        topic: r.label || `${r.logicType || ''} ${r.format || ''}`,
+                        children: [],
+                        tags: [r.format || '', r.logicType || ''].filter(Boolean)
+                    });
+                });
+                sheetNode.children.push(colNode);
+            });
+            root.children.push(sheetNode);
+        });
+        if (deps.length) {
+            root.children.push({
+                id: 'dependencies',
+                topic: 'Dependencies',
+                children: deps.map(d => ({
+                    id: `dep|${d.from}|${d.to}`,
+                    topic: d.label || `${d.from} → ${d.to}`
+                }))
+            });
+        }
+        return {root};
+    }
+
+    function updateGraph(json) {
+        showStatus('');
+        const m = ensureMind();
+        if (!m) return;
+        if (typeof json === 'string') {
+            try { json = JSON.parse(json); } catch (e) { console.error(e); showStatus('Invalid graph JSON'); }
+        }
+        graphData = json || graphData;
+        if (!graphData.nodes || graphData.nodes.length === 0) {
+            showStatus('No graph data to display.');
+            renderFallback(null);
+            return;
+        }
+        const tree = buildTree(graphData);
+        if (!MindElixirLib) {
+            renderFallback(tree.root);
+            return;
+        }
+        try {
+            m.init({
+                nodeData: tree.root,
+                direction: MindElixir.LEFT_RIGHT
+            });
+            m.expandAll();
+        } catch (e) {
+            console.error(e);
+            showStatus('Mind map render failed. Showing fallback tree.');
+            renderFallback(tree.root);
+        }
+    }
+
+    function highlightQuery(q) {
+        const m = ensureMind();
+        if (!m) return;
+        const text = (q || '').toLowerCase();
+        m.expandAll();
+        const nodes = m.el.querySelectorAll('[data-nodeid]');
+        nodes.forEach(n => n.classList.remove('highlight'));
+        if (!text) return;
+        nodes.forEach(n => {
+            const t = (n.textContent || '').toLowerCase();
+            if (t.includes(text)) {
+                n.classList.add('highlight');
+            }
+        });
+    }
+
+    function autoLayout() {
+        const m = ensureMind();
+        if (!m) return;
+        try { m.layout(); } catch (e) { console.error(e); }
+    }
+
+    function exportPng() {
+        const el = document.getElementById('map');
+        domtoimage.toPng(el).then(dataUrl => {
+            const link = document.createElement('a');
+            link.download = 'logic-map.png';
+            link.href = dataUrl;
+            link.click();
+        });
+    }
+
+    function exportSvg() {
+        alert('SVG export is not supported in this lightweight view. Use PNG export instead.');
+    }
+
+    function showStatus(msg) {
+        const el = document.getElementById('status');
+        if (!el) return;
+        if (msg) {
+            el.textContent = msg;
+            el.style.display = 'block';
+        } else {
+            el.textContent = '';
+            el.style.display = 'none';
+        }
+    }
+
+    function renderFallback(root) {
+        const map = document.getElementById('map');
+        map.innerHTML = '';
+        if (!root) return;
+        const wrap = document.createElement('div');
+        wrap.style.padding = '12px';
+        wrap.style.fontSize = '13px';
+        wrap.appendChild(renderNode(root));
+        map.appendChild(wrap);
+    }
+
+    function renderNode(node) {
+        const li = document.createElement('li');
+        li.textContent = node.topic || '';
+        li.dataset.nodeid = node.id;
+        li.style.cursor = 'pointer';
+        li.onclick = () => {
+            if (window.javaBridge && window.javaBridge.onNodeClick) {
+                window.javaBridge.onNodeClick(node.id);
+            }
+        };
+        if (node.children && node.children.length > 0) {
+            const ul = document.createElement('ul');
+            ul.style.marginLeft = '16px';
+            node.children.forEach(child => ul.appendChild(renderNode(child)));
+            li.appendChild(ul);
+        }
+        return li;
+    }
+
+    window.updateGraph = updateGraph;
+    window.autoLayout = autoLayout;
+    window.highlightQuery = highlightQuery;
+    window.exportPng = exportPng;
+    window.exportSvg = exportSvg;
+</script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aac.kpi.controller.AgentAssistController">
+    <top>
+        <HBox spacing="10">
+            <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+            <children>
+                <Label text="Mode:"/>
+                <Label fx:id="statusLabel" prefWidth="380" />
+            </children>
+        </HBox>
+    </top>
+    <center>
+        <VBox spacing="8">
+            <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+            <children>
+                <TextArea fx:id="promptArea" promptText="E.g., list patients with RF>1 and their latest encounter date" prefRowCount="3" wrapText="true"/>
+                <HBox spacing="8">
+                    <children>
+                        <Button fx:id="runButton" text="Run" onAction="#onRun"/>
+                        <Button text="Clear" onAction="#onClear"/>
+                    </children>
+                </HBox>
+                <Label text="Answer"/>
+                <TextArea fx:id="answerArea" editable="false" wrapText="true" prefRowCount="4"/>
+                <Label text="Trace (agent steps)"/>
+                <TextArea fx:id="traceArea" editable="false" wrapText="true" prefRowCount="4"/>
+            </children>
+        </VBox>
+    </center>
+</BorderPane>

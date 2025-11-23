@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.canvas.Canvas?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aac.kpi.controller.AiOverlayController" stylesheets="@style.css">
+    <top>
+        <VBox spacing="6">
+            <padding><Insets top="10" right="12" bottom="6" left="12"/></padding>
+            <children>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="Scenario"/>
+                    <ComboBox fx:id="scenarioBox" promptText="Optional scenario" prefWidth="220"/>
+                    <Button text="Explain Logic" fx:id="runButton" onAction="#onRun"/>
+                    <Button text="Apply Mapping" fx:id="applyButton" onAction="#onApply"/>
+                    <Button text="Clear" onAction="#onClear"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="statusLabel" text="RAG Rule Builder"/>
+                </HBox>
+                <HBox spacing="8">
+                    <Label text="Ask / edit note"/>
+                    <TextArea fx:id="promptArea" promptText="Ask 'Explain this logic' or leave notes for an edit." prefRowCount="2" wrapText="true" HBox.hgrow="ALWAYS"/>
+                </HBox>
+            </children>
+        </VBox>
+    </top>
+    <center>
+        <SplitPane orientation="VERTICAL">
+            <items>
+                <SplitPane dividerPositions="0.18,0.62">
+                    <items>
+                        <VBox spacing="8">
+                            <padding><Insets top="8" right="6" bottom="8" left="12"/></padding>
+                            <children>
+                                <Label text="Sheets"/>
+                                <ListView fx:id="sheetList" prefHeight="200"/>
+                            </children>
+                        </VBox>
+
+                        <VBox spacing="6">
+                            <padding><Insets top="8" right="6" bottom="8" left="6"/></padding>
+                            <children>
+                                <Label text="Rule Cards (columns)"/>
+                                <TableView fx:id="ruleTable" prefHeight="260">
+                                    <columns>
+                                        <TableColumn fx:id="colName" text="Column" prefWidth="160"/>
+                                        <TableColumn fx:id="colType" text="Type" prefWidth="90"/>
+                                        <TableColumn fx:id="colFormat" text="Format" prefWidth="130"/>
+                                        <TableColumn fx:id="colLogic" text="Logic" prefWidth="110"/>
+                                        <TableColumn fx:id="colMapping" text="From Sheet.Column" prefWidth="160"/>
+                                        <TableColumn fx:id="colPattern" text="Pattern" prefWidth="120"/>
+                                    </columns>
+                                </TableView>
+                                <GridPane hgap="8" vgap="6">
+                                    <columnConstraints>
+                                        <ColumnConstraints percentWidth="25"/>
+                                        <ColumnConstraints percentWidth="25"/>
+                                        <ColumnConstraints percentWidth="25"/>
+                                        <ColumnConstraints percentWidth="25"/>
+                                    </columnConstraints>
+                                    <children>
+                                        <Label text="From sheet" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="sourceSheetField" promptText="Patient (Master)" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                                        <Label text="From column" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                                        <TextField fx:id="sourceColumnField" promptText="patient_id" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+
+                                        <Label text="Logic type" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="logicField" promptText="derived/random/fixed" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                                        <Label text="Transform" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                                        <TextField fx:id="transformField" promptText="e.g., use patient_name" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+
+                                        <Label text="Data type" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="dataTypeField" promptText="text/number/date" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                                        <Label text="Format" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+                                        <TextField fx:id="formatField" promptText="uuid32 / yyyy-MM-dd" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
+
+                                        <Label text="Pattern" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="patternField" promptText="sample pattern" GridPane.rowIndex="3" GridPane.columnIndex="1" GridPane.columnSpan="3"/>
+                                    </children>
+                                </GridPane>
+                                <TextArea fx:id="proposalArea" promptText="Rule summary" prefRowCount="3" wrapText="true"/>
+                            </children>
+                        </VBox>
+
+                        <VBox spacing="6">
+                            <padding><Insets top="8" right="12" bottom="8" left="6"/></padding>
+                            <children>
+                                <Label text="Logic &amp; Explainability"/>
+                                <TextArea fx:id="answerArea" prefRowCount="5" wrapText="true"/>
+                                <Label text="Dependencies"/>
+                                <ListView fx:id="dependenciesList" prefHeight="90"/>
+                                <Label text="Live Preview"/>
+                                <ListView fx:id="previewList" prefHeight="110"/>
+                                <Label text="Validations"/>
+                                <TextArea fx:id="validationsArea" prefRowCount="2" wrapText="true"/>
+                            </children>
+                        </VBox>
+                    </items>
+                </SplitPane>
+
+                <VBox spacing="6">
+                    <padding><Insets top="6" right="12" bottom="12" left="12"/></padding>
+                    <children>
+                        <Label text="RAG Trace / Plan"/>
+                        <TextArea fx:id="planArea" prefRowCount="2" wrapText="true"/>
+                        <Label text="Retrieved Context"/>
+                        <TextArea fx:id="toolsArea" prefRowCount="3" wrapText="true"/>
+                        <TitledPane text="How this RAG works" expanded="false">
+                            <content>
+                                <TextArea editable="false" wrapText="true" prefRowCount="5" styleClass="info-box" text="
+Sources: rule-graph.json + rules config + in-memory data + scenario overrides + user edits (config/rag-memory.json).
+Use: pick a sheet/column → Explain Logic → edit mapping/logic/type/format/pattern → Apply.
+Edits: saved to rule graph and memory; previews update live.
+Columns: toggle in graph to see all fields and formats; zoom to inspect details.
+Scenarios: selecting a scenario overlays its overrides for explanation and previews."/>
+                            </content>
+                        </TitledPane>
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <Label text="Dependency Graph"/>
+                            <CheckBox fx:id="showColumnsToggle" text="Show column rules" selected="true"/>
+                            <CheckBox fx:id="showEdgeLabelsToggle" text="Show edge labels" selected="false"/>
+                            <Label text="Zoom"/>
+                            <Slider fx:id="zoomSlider" min="0.6" max="2.0" value="1.0" prefWidth="140"/>
+                            <Label fx:id="zoomLabel" text="100%"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="openFullScreenButton" text="Open Full Screen" onAction="#onOpenGraphFullScreen"/>
+                            <Button text="Refresh Graph" onAction="#onRefreshGraph"/>
+                        </HBox>
+                        <ScrollPane fitToWidth="false" fitToHeight="false" prefViewportHeight="320">
+                            <content>
+                                <StackPane>
+                                    <Canvas fx:id="dependencyCanvas" width="1400" height="900"/>
+                                </StackPane>
+                            </content>
+                        </ScrollPane>
+                    </children>
+                </VBox>
+            </items>
+        </SplitPane>
+    </center>
+</BorderPane>

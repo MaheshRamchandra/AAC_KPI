@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.web.WebView?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aac.kpi.controller.LogicGraphController" stylesheets="@style.css">
+    <top>
+        <HBox spacing="8">
+            <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+            <children>
+                <Label text="Search"/>
+                <TextField fx:id="searchField" promptText="Search node or rule"/>
+                <CheckBox fx:id="dependencyToggle" text="Show dependencies" selected="true"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="Auto Layout" fx:id="autoLayoutButton" onAction="#onAutoLayout"/>
+                <Button text="Export PNG" fx:id="exportPngButton" onAction="#onExportPng"/>
+                <Button text="Export SVG" fx:id="exportSvgButton" onAction="#onExportSvg"/>
+                <Button text="Refresh" fx:id="refreshButton" onAction="#onRefresh"/>
+            </children>
+        </HBox>
+    </top>
+    <center>
+        <WebView fx:id="webView"/>
+    </center>
+</BorderPane>
