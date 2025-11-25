@@ -13,7 +13,7 @@ public final class JsonExportService {
     private JsonExportService() {}
 
     // Allow larger compression ratios when reading XLSX files in the external converter JAR
-    private static final String MIN_INFLATE_RATIO = "0.001";
+    private static final String MIN_INFLATE_RATIO = "0.0";
 
     public static class Result {
         private final int exitCode;
@@ -45,6 +45,7 @@ public final class JsonExportService {
         String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
         command.add(javaBin);
         command.add("-Dpoi.min.inflate.ratio=" + MIN_INFLATE_RATIO);
+        command.add("-Dorg.apache.poi.openxml4j.util.ZipSecureFile.minInflateRatio=" + MIN_INFLATE_RATIO);
         command.add("-jar");
         command.add(jar.getAbsolutePath());
         command.add(excel.getAbsolutePath());
@@ -57,6 +58,12 @@ public final class JsonExportService {
         command.add(String.valueOf(locationCount));
 
         ProcessBuilder pb = new ProcessBuilder(command);
+        // Also set via JAVA_TOOL_OPTIONS in case the JVM ignores command-line args (defensive)
+        String javaToolOptions = pb.environment().getOrDefault("JAVA_TOOL_OPTIONS", "");
+        String overrideProps = "-Dpoi.min.inflate.ratio=" + MIN_INFLATE_RATIO + " "
+                + "-Dorg.apache.poi.openxml4j.util.ZipSecureFile.minInflateRatio=" + MIN_INFLATE_RATIO;
+        pb.environment().put("JAVA_TOOL_OPTIONS",
+                (javaToolOptions.isBlank() ? overrideProps : javaToolOptions + " " + overrideProps).trim());
         pb.redirectErrorStream(true);
         Process process = pb.start();
         String output = readStream(process.getInputStream());
