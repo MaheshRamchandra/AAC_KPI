@@ -34,6 +34,7 @@ public class ScenarioBuilderController {
     @FXML private TextField tfDateOfContact;
     @FXML private TextField tfAge;
     @FXML private TextArea taRemarks;
+    @FXML private TextField tfContactLogs;
     @FXML private TextArea taCustomExtras;
 
     @FXML private ComboBox<String> cbKpiType;
@@ -50,6 +51,7 @@ public class ScenarioBuilderController {
     @FXML private TableColumn<ScenarioTestCase, String> cContactDate;
     @FXML private TableColumn<ScenarioTestCase, String> cAge;
     @FXML private TableColumn<ScenarioTestCase, String> cRemarks;
+    @FXML private TableColumn<ScenarioTestCase, String> cContactLogs;
     @FXML private TableColumn<ScenarioTestCase, String> cOverrides;
 
     @FXML private Label summaryLabel;
@@ -101,6 +103,9 @@ public class ScenarioBuilderController {
         cContactDate.setCellValueFactory(new PropertyValueFactory<>("dateOfContact"));
         cAge.setCellValueFactory(new PropertyValueFactory<>("age"));
         cRemarks.setCellValueFactory(new PropertyValueFactory<>("remarks"));
+        if (cContactLogs != null) {
+            cContactLogs.setCellValueFactory(new PropertyValueFactory<>("contactLogs"));
+        }
         if (cOverrides != null) {
             cOverrides.setCellValueFactory(cell -> {
                 List<ScenarioTestCase.ColumnOverride> overrides = cell.getValue() != null ? cell.getValue().getColumnOverrides() : List.of();
@@ -165,6 +170,10 @@ public class ScenarioBuilderController {
             cRemarks.setCellFactory(TextFieldTableCell.forTableColumn());
             cRemarks.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setRemarks(trim(e.getNewValue())); });
         }
+        if (cContactLogs != null) {
+            cContactLogs.setCellFactory(TextFieldTableCell.forTableColumn());
+            cContactLogs.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setContactLogs(trim(e.getNewValue())); });
+        }
 
         resetFormFields();
         if (table != null) {
@@ -225,6 +234,7 @@ public class ScenarioBuilderController {
         scenario.setDateOfContact(getTrimmed(tfDateOfContact));
         scenario.setAge(getTrimmed(tfAge));
         scenario.setRemarks(getTrimmed(taRemarks));
+        scenario.setContactLogs(getTrimmed(tfContactLogs));
         scenario.setExtraFields(parseExtras(getTrimmed(taCustomExtras)));
         scenario.setColumnOverrides(new java.util.ArrayList<>(globalOverrides));
         scenarios.add(scenario);
@@ -364,6 +374,7 @@ public class ScenarioBuilderController {
         }
         if (tfAapSessionDate != null) tfAapSessionDate.clear();
         if (tfAapAttendance != null) tfAapAttendance.clear();
+        if (tfContactLogs != null) tfContactLogs.clear();
         if (cbBoundary != null) {
             cbBoundary.getSelectionModel().clearSelection();
             if (cbBoundary.isEditable() && cbBoundary.getEditor() != null) {

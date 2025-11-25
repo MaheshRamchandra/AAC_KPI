@@ -84,34 +84,29 @@ public final class CommonBuilderService {
             r.setPatientReference(patientRef);
 
             // encounters for patient (finished only) and valid purposes; join with '#'
-            java.util.Set<String> validPurposes = java.util.Set.of("befriending", "buddying", "functional screening");
             String pidSan = sanitizeAlphaNum(p.getPatientId());
             List<Encounter> encList = !byPatientEncSan.getOrDefault(pidSan, List.of()).isEmpty()
                     ? byPatientEncSan.get(pidSan)
                     : byPatientEnc.getOrDefault(p.getPatientId(), List.of());
-            List<String> encRefs = encList.stream()
+            // Prefer finished encounters, but include all for the resident if none are marked finished.
+            java.util.LinkedHashSet<String> finishedIds = encList.stream()
                     .filter(e -> "finished".equalsIgnoreCase(e.getEncounterStatus()))
-                    .filter(e -> {
-                        String pur = e.getEncounterPurpose();
-                        return pur != null && validPurposes.contains(pur.trim().toLowerCase());
-                    })
                     .map(Encounter::getEncounterId)
                     .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-            // Fallback: if none matched strict filter, pick any encounter id for the patient (first)
-            if (encRefs.isEmpty()) {
-                Optional<String> any = encList.stream()
-                        .map(Encounter::getEncounterId)
-                        .filter(Objects::nonNull)
-                        .findFirst();
-                if (any.isPresent()) {
-                    encRefs = java.util.Collections.singletonList(any.get());
-                }
-            }
-            // Must have at least 1 encounter reference; skip resident if still none
-            if (encRefs.isEmpty()) continue;
-            // Join encounter references with '##' when multiple
-            r.setEncounterReferences(encRefs.size() <= 1 ? (encRefs.isEmpty()?"":encRefs.get(0)) : String.join("##", encRefs));
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+            java.util.LinkedHashSet<String> allIds = encList.stream()
+                    .map(Encounter::getEncounterId)
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+            List<String> encRefs = finishedIds.isEmpty()
+                    ? new java.util.ArrayList<>(allIds)
+                    : new java.util.ArrayList<>(finishedIds);
+            if (encRefs.isEmpty()) continue; // Must have at least one encounter to build a resident row
+            r.setEncounterReferences(String.join("##", encRefs));
 
             // questionnaire: latest completed questionnaire reference per resident (by latest date found in answers)
             List<QuestionnaireResponse> qList = !byPatientQSan.getOrDefault(pidSan, List.of()).isEmpty()

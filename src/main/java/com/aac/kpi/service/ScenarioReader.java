@@ -54,6 +54,7 @@ public class ScenarioReader {
                 scenario.setPurposeOfContact(getValue(row, headerIndex, usedColumns, "purposeofcontact"));
                 scenario.setDateOfContact(getValue(row, headerIndex, usedColumns, "dateofcontact", "contactdate"));
                 scenario.setAge(getValue(row, headerIndex, usedColumns, "age"));
+                scenario.setContactLogs(getValue(row, headerIndex, usedColumns, "contactlogs", "contactlog", "contact logs", "encounters", "contactlogs(encounters)"));
                 scenario.setRemarks(getValue(row, headerIndex, usedColumns, "remarks", "others"));
                 scenario.setExtraFields(captureExtraFields(row, headerIndex, usedColumns));
                 if (!isEmptyRow(scenario)) scenarios.add(scenario);
@@ -74,7 +75,8 @@ public class ScenarioReader {
                 && isBlank(scenario.getWithinBoundary())
                 && isBlank(scenario.getPurposeOfContact())
                 && isBlank(scenario.getDateOfContact())
-                && isBlank(scenario.getAge());
+                && isBlank(scenario.getAge())
+                && isBlank(scenario.getContactLogs());
         boolean extrasEmpty = scenario.getExtraFields() == null || scenario.getExtraFields().isEmpty();
         return coreEmpty && extrasEmpty;
     }

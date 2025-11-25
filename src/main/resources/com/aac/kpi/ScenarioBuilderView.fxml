@@ -42,23 +42,26 @@
                     <Label text="No of AAP attendance in person" GridPane.rowIndex="4" GridPane.columnIndex="0" />
                     <TextField fx:id="tfAapAttendance" GridPane.rowIndex="4" GridPane.columnIndex="1" />
 
-                    <Label text="Within or out of boundary" GridPane.rowIndex="5" GridPane.columnIndex="0" />
-                    <ComboBox fx:id="cbBoundary" GridPane.rowIndex="5" GridPane.columnIndex="1" editable="true" />
+                    <Label text="Contact logs (encounters)" GridPane.rowIndex="5" GridPane.columnIndex="0" />
+                    <TextField fx:id="tfContactLogs" GridPane.rowIndex="5" GridPane.columnIndex="1" />
 
-                    <Label text="Purpose of contact" GridPane.rowIndex="6" GridPane.columnIndex="0" />
-                    <ComboBox fx:id="cbPurpose" GridPane.rowIndex="6" GridPane.columnIndex="1" editable="true" />
+                    <Label text="Within or out of boundary" GridPane.rowIndex="6" GridPane.columnIndex="0" />
+                    <ComboBox fx:id="cbBoundary" GridPane.rowIndex="6" GridPane.columnIndex="1" editable="true" />
 
-                    <Label text="Date of contact" GridPane.rowIndex="7" GridPane.columnIndex="0" />
-                    <TextField fx:id="tfDateOfContact" GridPane.rowIndex="7" GridPane.columnIndex="1" />
+                    <Label text="Purpose of contact" GridPane.rowIndex="7" GridPane.columnIndex="0" />
+                    <ComboBox fx:id="cbPurpose" GridPane.rowIndex="7" GridPane.columnIndex="1" editable="true" />
 
-                    <Label text="Age" GridPane.rowIndex="8" GridPane.columnIndex="0" />
-                    <TextField fx:id="tfAge" GridPane.rowIndex="8" GridPane.columnIndex="1" />
+                    <Label text="Date of contact" GridPane.rowIndex="8" GridPane.columnIndex="0" />
+                    <TextField fx:id="tfDateOfContact" GridPane.rowIndex="8" GridPane.columnIndex="1" />
 
-                    <Label text="Remarks / Others" GridPane.rowIndex="9" GridPane.columnIndex="0" />
-                    <TextArea fx:id="taRemarks" GridPane.rowIndex="9" GridPane.columnIndex="1" prefRowCount="3" wrapText="true" />
+                    <Label text="Age" GridPane.rowIndex="9" GridPane.columnIndex="0" />
+                    <TextField fx:id="tfAge" GridPane.rowIndex="9" GridPane.columnIndex="1" />
 
-                    <Label text="Custom columns (key=value, one per line)" GridPane.rowIndex="10" GridPane.columnIndex="0" />
-                    <TextArea fx:id="taCustomExtras" GridPane.rowIndex="10" GridPane.columnIndex="1" prefRowCount="3" wrapText="true"
+                    <Label text="Remarks / Others" GridPane.rowIndex="10" GridPane.columnIndex="0" />
+                    <TextArea fx:id="taRemarks" GridPane.rowIndex="10" GridPane.columnIndex="1" prefRowCount="3" wrapText="true" />
+
+                    <Label text="Custom columns (key=value, one per line)" GridPane.rowIndex="11" GridPane.columnIndex="0" />
+                    <TextArea fx:id="taCustomExtras" GridPane.rowIndex="11" GridPane.columnIndex="1" prefRowCount="3" wrapText="true"
                               promptText="Example:&#10;Social Risk Factor=>1&#10;KPI Type=Befriending" />
                 </GridPane>
                 <HBox spacing="10">
@@ -82,6 +85,7 @@
                 <TableColumn fx:id="cMode" text="Mode of event" prefWidth="120" />
                 <TableColumn fx:id="cAapDate" text="AAP Session Date" prefWidth="120" />
                 <TableColumn fx:id="cAapAttendance" text="AAP Attendance" prefWidth="120" />
+                <TableColumn fx:id="cContactLogs" text="Contact logs" prefWidth="120" />
                 <TableColumn fx:id="cBoundary" text="Boundary" prefWidth="140" />
                 <TableColumn fx:id="cPurpose" text="Purpose of contact" prefWidth="180" />
                 <TableColumn fx:id="cContactDate" text="Date of contact" prefWidth="120" />
