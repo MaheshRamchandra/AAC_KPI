@@ -16,6 +16,7 @@ import javafx.scene.control.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 
+import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
@@ -277,6 +278,8 @@ public class JsonExportController {
     }
 
     private java.util.Map<String, Integer> countCommonSections(File excel) throws IOException {
+        // Lower the inflate ratio to allow slightly more compressed XLSX files without tripping the zip-bomb guard
+        ZipSecureFile.setMinInflateRatio(0.001d);
         try (FileInputStream fis = new FileInputStream(excel);
              XSSFWorkbook wb = new XSSFWorkbook(fis)) {
             Sheet sheet = wb.getSheet("Common");
