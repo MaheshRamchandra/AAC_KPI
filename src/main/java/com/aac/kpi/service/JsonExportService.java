@@ -12,6 +12,9 @@ import java.util.List;
 public final class JsonExportService {
     private JsonExportService() {}
 
+    // Allow larger compression ratios when reading XLSX files in the external converter JAR
+    private static final String MIN_INFLATE_RATIO = "0.001";
+
     public static class Result {
         private final int exitCode;
         private final String output;
@@ -41,6 +44,7 @@ public final class JsonExportService {
         List<String> command = new ArrayList<>();
         String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
         command.add(javaBin);
+        command.add("-Dpoi.min.inflate.ratio=" + MIN_INFLATE_RATIO);
         command.add("-jar");
         command.add(jar.getAbsolutePath());
         command.add(excel.getAbsolutePath());
