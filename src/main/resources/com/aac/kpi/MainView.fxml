@@ -51,6 +51,8 @@
         <HBox styleClass="status-bar">
             <children>
                 <Label fx:id="statusLabel" text="Generated 0 patients | 0 sessions | Last export: " />
+                <Separator orientation="VERTICAL" />
+                <Label fx:id="healthLabel" text="Health: OK" />
             </children>
         </HBox>
     </bottom>

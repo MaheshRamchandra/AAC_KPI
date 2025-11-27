@@ -15,6 +15,7 @@ import com.aac.kpi.service.ExcelReader;
 import com.aac.kpi.service.ExcelWriter;
 import com.aac.kpi.service.LinkService;
 import com.aac.kpi.service.MasterDataService;
+import com.aac.kpi.service.ValidationService;
 import com.aac.kpi.service.AppState;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -68,6 +69,8 @@ public class MainController {
     private Tab masterDataTab;
     @FXML
     private Tab aiTab;
+    @FXML
+    private Label healthLabel;
     @FXML
     private Label statusLabel;
 
@@ -438,6 +441,18 @@ public class MainController {
                 "Generated %d patients | %d sessions | %d practitioners | %d encounters | %d questionnaires%s | Last export: ",
                 patients.size(), sessions.size(), practitioners.size(), encounters.size(), questionnaires.size(),
                 dirty));
+        updateHealth();
+    }
+
+    private void updateHealth() {
+        if (healthLabel == null) return;
+        ValidationService.Summary summary = ValidationService.summarize(
+                new ArrayList<>(patients),
+                new ArrayList<>(sessions),
+                new ArrayList<>(encounters),
+                new ArrayList<>(commonRows));
+        healthLabel.setText(summary.summaryLine());
+        healthLabel.setTextFill(summary.hasIssues() ? Color.web("#c62828") : Color.web("#2e7d32"));
     }
 
     private boolean isBlank(String v) {
