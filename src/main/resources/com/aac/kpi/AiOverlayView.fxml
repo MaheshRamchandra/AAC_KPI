@@ -126,6 +126,8 @@ Scenarios: selecting a scenario overlays its overrides for explanation and previ
                             <Slider fx:id="zoomSlider" min="0.6" max="2.0" value="1.0" prefWidth="140"/>
                             <Label fx:id="zoomLabel" text="100%"/>
                             <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="centerSelectedButton" text="Center" onAction="#onCenterSelected"/>
+                            <Button fx:id="fitGraphButton" text="Fit" onAction="#onFitGraph"/>
                             <Button fx:id="openFullScreenButton" text="Open Full Screen" onAction="#onOpenGraphFullScreen"/>
                             <Button text="Refresh Graph" onAction="#onRefreshGraph"/>
                         </HBox>
@@ -142,11 +144,16 @@ Scenarios: selecting a scenario overlays its overrides for explanation and previ
                                 <Label text="Graph actions"/>
                                 <HBox spacing="8">
                                     <Button fx:id="copyMermaidButton" text="Copy Mermaid" onAction="#onCopyMermaid"/>
+                                    <CheckBox fx:id="onlyMissingToggle" text="Only missing mappings"/>
                                 </HBox>
                                 <Label fx:id="legendLabel" wrapText="true" prefWidth="320"/>
                             </VBox>
+                            <VBox spacing="4">
+                                <Label text="Logic filters"/>
+                                <ListView fx:id="logicFilterList" prefHeight="140" prefWidth="160"/>
+                            </VBox>
                         </HBox>
-                        <ScrollPane fitToWidth="true" fitToHeight="true" prefViewportHeight="320">
+                        <ScrollPane fx:id="graphScroll" fitToWidth="true" fitToHeight="true" prefViewportHeight="320">
                             <content>
                                 <StackPane>
                                     <Canvas fx:id="dependencyCanvas" width="1400" height="900"/>

@@ -36,6 +36,8 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.animation.PauseTransition;
+import javafx.util.Duration;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -91,16 +93,24 @@ public class AiOverlayController {
     @FXML private Button selectAllFilterButton;
     @FXML private Button copyMermaidButton;
     @FXML private ListView<String> filterList;
+    @FXML private ListView<String> logicFilterList;
+    @FXML private CheckBox onlyMissingToggle;
+    @FXML private Button centerSelectedButton;
+    @FXML private Button fitGraphButton;
+    @FXML private ScrollPane graphScroll;
 
     private RagRuleService ragService;
     private final ObservableList<RuleCardRow> rows = FXCollections.observableArrayList();
     private final Set<String> visibleSheets = new HashSet<>();
+    private final Set<String> logicFilters = new HashSet<>();
     private double zoomFactor = 1.0;
     private static final double MIN_ZOOM = 0.6;
     private static final double MAX_ZOOM = 2.0;
     private static final double BASE_WIDTH = 1400;
     private static final double BASE_HEIGHT = 900;
     private static final double MAX_CANVAS_DIM = 4096;
+    private PauseTransition debounceDraw;
+    private Rect lastGraphBounds = new Rect(0,0,0,0);
 
     public void init(ObservableList<Patient> patients,
                      ObservableList<EventSession> sessions,
@@ -124,6 +134,13 @@ public class AiOverlayController {
             visibleSheets.clear();
             visibleSheets.addAll(filterList.getItems());
         }
+        if (logicFilterList != null) {
+            logicFilterList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+            logicFilterList.getItems().setAll(List.of("derived", "random", "fixed", "generated", "default", "timestamp"));
+            logicFilterList.getSelectionModel().selectAll();
+            logicFilters.clear();
+            logicFilters.addAll(logicFilterList.getItems());
+        }
         if (scenarioBox != null) {
             scenarioBox.getItems().setAll(ragService.scenarioNames());
             scenarioBox.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> loadRules());
@@ -133,6 +150,16 @@ public class AiOverlayController {
         }
         if (legendLabel != null) {
             legendLabel.setText("Legend: sheet clusters colored; columns shown only when used; edges labeled by logic (if enabled); filters limit visible sheets.");
+        }
+        if (logicFilterList != null) {
+            logicFilterList.getSelectionModel().selectedItemProperty().addListener((obs, ov, nv) -> {
+                logicFilters.clear();
+                logicFilters.addAll(logicFilterList.getSelectionModel().getSelectedItems());
+                drawGraph();
+            });
+        }
+        if (onlyMissingToggle != null) {
+            onlyMissingToggle.selectedProperty().addListener((obs, ov, nv) -> drawGraph());
         }
         if (showColumnsToggle != null) {
             showColumnsToggle.selectedProperty().addListener((obs, ov, nv) -> drawGraph());
@@ -152,6 +179,8 @@ public class AiOverlayController {
             zoomSlider.valueProperty().addListener((obs, ov, nv) -> setZoom(nv == null ? 1.0 : nv.doubleValue(), dependencyCanvas, zoomSlider, null));
             updateZoomLabel();
         }
+        debounceDraw = new PauseTransition(Duration.millis(120));
+        debounceDraw.setOnFinished(e -> drawGraph());
     }
 
     private void setupTable() {
@@ -248,6 +277,33 @@ public class AiOverlayController {
         content.putString(mermaid);
         Clipboard.getSystemClipboard().setContent(content);
         setStatus("Copied Mermaid graph to clipboard.");
+    }
+
+    @FXML
+    private void onCenterSelected() {
+        if (graphScroll == null || dependencyCanvas == null || lastGraphBounds.w <= 0 || lastGraphBounds.h <= 0) return;
+        double contentW = dependencyCanvas.getWidth();
+        double contentH = dependencyCanvas.getHeight();
+        double viewW = graphScroll.getViewportBounds().getWidth();
+        double viewH = graphScroll.getViewportBounds().getHeight();
+        if (contentW <= 0 || contentH <= 0 || viewW <= 0 || viewH <= 0) return;
+        double centerX = lastGraphBounds.x + lastGraphBounds.w / 2;
+        double centerY = lastGraphBounds.y + lastGraphBounds.h / 2;
+        double targetH = (centerX - viewW / 2) / Math.max(1, contentW - viewW);
+        double targetV = (centerY - viewH / 2) / Math.max(1, contentH - viewH);
+        graphScroll.setHvalue(Math.max(0, Math.min(1, targetH)));
+        graphScroll.setVvalue(Math.max(0, Math.min(1, targetV)));
+    }
+
+    @FXML
+    private void onFitGraph() {
+        if (graphScroll == null || lastGraphBounds.w <= 0 || lastGraphBounds.h <= 0) return;
+        double viewW = graphScroll.getViewportBounds().getWidth();
+        double viewH = graphScroll.getViewportBounds().getHeight();
+        if (viewW <= 0 || viewH <= 0) return;
+        double fitZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM,
+                Math.min(viewW / (lastGraphBounds.w + 120), viewH / (lastGraphBounds.h + 120))));
+        setZoom(fitZoom, dependencyCanvas, null, null);
     }
 
     private void loadRules() {
@@ -370,6 +426,7 @@ public class AiOverlayController {
         double radius = Math.min(layoutW, layoutH) / 2.6;
         int n = Math.max(1, sheets.size());
         Map<String, double[]> pos = new HashMap<>();
+        Map<String, NodeInfo> nodePos = new HashMap<>();
         Map<String, Color> sheetColors = new HashMap<>();
         Color[] palette = {
                 Color.web("#1e88e5"), Color.web("#8e24aa"), Color.web("#43a047"),
@@ -383,6 +440,8 @@ public class AiOverlayController {
             pos.put(sheets.get(i), new double[]{x, y, angle});
             sheetColors.put(sheets.get(i), palette[i % palette.length]);
         }
+        // track bounds
+        double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE, maxX = Double.MIN_VALUE, maxY = Double.MIN_VALUE;
 
         gc.setFill(Color.WHITE);
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
@@ -393,6 +452,11 @@ public class AiOverlayController {
             boolean isSelected = selectedSheet != null && selectedSheet.equals(sheet);
             double alpha = selectedSheet == null || isSelected ? 1.0 : faded;
             drawNode(gc, p[0] * zoom, p[1] * zoom, sheet, zoom, true, sheetColors.get(sheet), alpha);
+            nodePos.put("sheet|" + sheet, new NodeInfo(sheet, p[0] * zoom, p[1] * zoom, "sheet"));
+            minX = Math.min(minX, p[0] * zoom);
+            maxX = Math.max(maxX, p[0] * zoom);
+            minY = Math.min(minY, p[1] * zoom);
+            maxY = Math.max(maxY, p[1] * zoom);
         }
 
         // Sheet-to-sheet edges
@@ -430,6 +494,11 @@ public class AiOverlayController {
                 var relevantCols = sheetRule.columns.stream()
                         .filter(col -> (col.sourceSheet != null && !col.sourceSheet.isBlank())
                                 || hasDependents(sheetRule.name, col.name))
+                        .filter(col -> allowed.contains(safe(sheetRule.name)))
+                        .filter(col -> logicFilters.isEmpty() || logicFilters.contains(normalizeLogic(col.logicType)))
+                        .filter(col -> !onlyMissingToggle.isSelected()
+                                || safe(col.sourceSheet).isBlank()
+                                || safe(col.logicType).isBlank())
                         .toList();
                 int cols = relevantCols.size();
                 if (cols == 0) continue;
@@ -448,10 +517,16 @@ public class AiOverlayController {
                             || (col.sourceSheet != null && col.sourceSheet.equals(selectedSheet));
                     double alpha = relevant ? 1.0 : faded;
                     drawNode(gc, cxCol * zoom, cyCol * zoom, label, zoom, false, sheetColors.getOrDefault(sheetRule.name, Color.web("#90a4ae")), alpha);
+                    nodePos.put("col|" + sheetRule.name + "|" + col.name, new NodeInfo(sheetRule.name + "." + col.name, cxCol * zoom, cyCol * zoom, "col"));
+                    minX = Math.min(minX, cxCol * zoom);
+                    maxX = Math.max(maxX, cxCol * zoom);
+                    minY = Math.min(minY, cyCol * zoom);
+                    maxY = Math.max(maxY, cyCol * zoom);
                     gc.setStroke(Color.web("#b0bec5").deriveColor(0, 1, 1, alpha));
                     gc.strokeLine(origin[0] * zoom, origin[1] * zoom, cxCol * zoom, cyCol * zoom);
                     // Column dependency arrows
-                    if (col.sourceSheet != null && !col.sourceSheet.isBlank() && col.sourceColumn != null) {
+                    if (col.sourceSheet != null && !col.sourceSheet.isBlank() && col.sourceColumn != null
+                            && allowed.contains(safe(col.sourceSheet))) {
                         String fromId = col.sourceSheet;
                         String toId = sheetRule.name;
                         double[] fromPos = pos.get(fromId);
@@ -474,6 +549,19 @@ public class AiOverlayController {
                     }
                 }
             }
+        }
+        if (minX == Double.MAX_VALUE) {
+            lastGraphBounds = new Rect(0,0,0,0);
+        } else {
+            lastGraphBounds = new Rect(minX, minY, maxX - minX, maxY - minY);
+        }
+        if (dependencyCanvas != null) {
+            dependencyCanvas.setOnMouseMoved(evt -> {
+                NodeInfo nearest = findNearest(nodePos, evt.getX(), evt.getY());
+                if (nearest != null && statusLabel != null) {
+                    statusLabel.setText((nearest.type.equals("sheet") ? "Sheet: " : "Column: ") + nearest.label);
+                }
+            });
         }
     }
 
@@ -498,6 +586,31 @@ public class AiOverlayController {
         return t.substring(0, Math.max(0, max - 1)) + "…";
     }
 
+    private String normalizeLogic(String logic) {
+        return safe(logic).toLowerCase();
+    }
+
+    private NodeInfo findNearest(Map<String, NodeInfo> map, double x, double y) {
+        double best = Double.MAX_VALUE;
+        NodeInfo bestNode = null;
+        for (var entry : map.entrySet()) {
+            NodeInfo p = entry.getValue();
+            double dx = p.x - x;
+            double dy = p.y - y;
+            double dist = dx * dx + dy * dy;
+            if (dist < best) {
+                best = dist;
+                bestNode = p;
+            }
+        }
+        return bestNode;
+    }
+
+    private String nearestLabel(double[] data) {
+        // data currently not carrying label; fallback
+        return "node";
+    }
+
     private boolean hasDependents(String sheet, String column) {
         if (ragService.ruleGraph() == null || ragService.ruleGraph().sheets == null) return false;
         for (var s : ragService.ruleGraph().sheets) {
@@ -511,6 +624,18 @@ public class AiOverlayController {
         return false;
     }
 
+    private static final class NodeInfo {
+        final String label;
+        final double x;
+        final double y;
+        final String type;
+        NodeInfo(String label, double x, double y, String type) {
+            this.label = label;
+            this.x = x;
+            this.y = y;
+            this.type = type;
+        }
+    }
     private String text(TextField field, String fallback) {
         if (field == null || field.getText() == null || field.getText().isBlank()) return fallback;
         return field.getText().trim();
@@ -548,11 +673,7 @@ public class AiOverlayController {
         if (zoomSlider != null && zoomSlider != source && Math.abs(zoomSlider.getValue() - zoomFactor) > 0.001) {
             zoomSlider.setValue(zoomFactor);
         }
-        if (targetCanvas != null) {
-            renderGraph(targetCanvas);
-        } else {
-            drawGraph();
-        }
+        debounceDraw.playFromStart();
     }
 
     private double clampDim(double v) {
@@ -574,6 +695,9 @@ public class AiOverlayController {
                 if (s.columns != null) {
                     for (var c : s.columns) {
                         if ((c.sourceSheet == null || c.sourceSheet.isBlank()) && !hasDependents(s.name, c.name)) continue;
+                        if (!logicFilters.isEmpty() && !logicFilters.contains(normalizeLogic(c.logicType))) continue;
+                        if (onlyMissingToggle != null && onlyMissingToggle.isSelected()
+                                && !safe(c.sourceSheet).isBlank() && !safe(c.logicType).isBlank()) continue;
                         String colId = sheetId + "_" + sanitizeId(c.name);
                         sb.append("    ").append(colId).append("[\"").append(c.name).append("\"]\n");
                     }
@@ -586,6 +710,9 @@ public class AiOverlayController {
                     for (var c : s.columns) {
                         if (c.sourceSheet == null || c.sourceSheet.isBlank() || c.sourceColumn == null) continue;
                         if (!allowed.contains(safe(c.sourceSheet))) continue;
+                        if (!logicFilters.isEmpty() && !logicFilters.contains(normalizeLogic(c.logicType))) continue;
+                        if (onlyMissingToggle != null && onlyMissingToggle.isSelected()
+                                && !safe(c.sourceSheet).isBlank() && !safe(c.logicType).isBlank()) continue;
                         String fromId = sanitizeId(c.sourceSheet) + "_" + sanitizeId(c.sourceColumn);
                         String toId = sanitizeId(s.name) + "_" + sanitizeId(c.name);
                         String lbl = safe(c.logicType).isBlank() ? "derived" : safe(c.logicType);
