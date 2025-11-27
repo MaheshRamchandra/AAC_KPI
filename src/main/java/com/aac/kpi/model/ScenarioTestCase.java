@@ -17,6 +17,7 @@ public class ScenarioTestCase {
     private String dateOfContact;
     private String age;
     private String remarks;
+    private String contactLogs;
     private java.util.Map<String, String> extraFields = new java.util.LinkedHashMap<>();
     private java.util.List<ColumnOverride> columnOverrides = new java.util.ArrayList<>();
 
@@ -26,7 +27,8 @@ public class ScenarioTestCase {
     public ScenarioTestCase(String id, String workItemType, String title, String testStep, String stepAction,
                             String stepExpected, String numberOfSeniors, String cfs, String modeOfEvent,
                             String aapSessionDate, String numberOfAapAttendance, String withinBoundary,
-                            String purposeOfContact, String dateOfContact, String age, String remarks) {
+                            String purposeOfContact, String dateOfContact, String age, String remarks,
+                            String contactLogs) {
         this.id = id;
         this.workItemType = workItemType;
         this.title = title;
@@ -43,6 +45,7 @@ public class ScenarioTestCase {
         this.dateOfContact = dateOfContact;
         this.age = age;
         this.remarks = remarks;
+        this.contactLogs = contactLogs;
     }
 
     public String getId() {
@@ -171,6 +174,14 @@ public class ScenarioTestCase {
 
     public void setRemarks(String remarks) {
         this.remarks = remarks;
+    }
+
+    public String getContactLogs() {
+        return contactLogs;
+    }
+
+    public void setContactLogs(String contactLogs) {
+        this.contactLogs = contactLogs;
     }
 
     public java.util.Map<String, String> getExtraFields() {

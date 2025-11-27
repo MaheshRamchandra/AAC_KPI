@@ -119,11 +119,16 @@ public final class ScenarioGenerationService {
         int numberOfSeniors = parsePositiveInt(scenario.getNumberOfSeniors(), 0);
         if (numberOfSeniors <= 0) return;
 
-        int aapAttendanceCount = parsePositiveInt(scenario.getNumberOfAapAttendance(), 0);
+        int aapAttendanceCount = parsePositiveInt(scenario.getNumberOfAapAttendance(), 1);
         String cfsText = scenario.getCfs();
         IntRange cfsRange = parseCfsRange(cfsText);
         Map<String, String> extras = scenario.getExtraFields() == null ? Map.of() : scenario.getExtraFields();
         List<ScenarioTestCase.ColumnOverride> overrides = scenario.getColumnOverrides() == null ? List.of() : scenario.getColumnOverrides();
+
+        int contactLogCount = parsePositiveInt(scenario.getContactLogs(), 1);
+        if (contactLogCount <= 0) {
+            contactLogCount = parsePositiveInt(getExtra(extras, "contactlogs", "contact log", "encounters", "encountercount", "contact logs (encounters)"), 1);
+        }
 
         String modeOfEvent = nvl(scenario.getModeOfEvent());
         String boundary = nvl(scenario.getWithinBoundary());
@@ -206,7 +211,7 @@ public final class ScenarioGenerationService {
         }
 
         List<Encounter> scenarioEncounters = generateEncountersForScenario(
-                scenarioPatients, contactDate != null ? contactDate : baseDate, purpose, overrides);
+                scenarioPatients, contactDate != null ? contactDate : baseDate, purpose, contactLogCount, overrides);
         encounters.addAll(scenarioEncounters);
 
         List<QuestionnaireResponse> scenarioQuestionnaires = generateQuestionnairesForScenario(
@@ -252,34 +257,26 @@ public final class ScenarioGenerationService {
             }
         }
         int durationMinutes = (int) java.time.Duration.between(startBase, endBase).toMinutes();
-        String startText = RandomDataUtil.isoTimestampWithOffset(startBase, "+08:00");
-        String endText = RandomDataUtil.isoTimestampWithOffset(endBase, "+08:00");
-
-        List<String> ids = new ArrayList<>();
-        for (Patient p : patients) ids.add(p.getPatientId());
-        int n = ids.size();
-
-        for (int row = 0; row < n; row++) {
-            EventSession s = new EventSession();
-            s.setCompositionId(RandomDataUtil.uuid32());
-            s.setNumberOfEventSessions(1);
-            s.setEventSessionId1(RandomDataUtil.randomEventId());
-            s.setEventSessionMode1(modeOfEvent.isBlank() ? "In-person" : modeOfEvent);
-            s.setEventSessionStartDate1(startText);
-            s.setEventSessionEndDate1(endText);
-            s.setEventSessionDuration1(durationMinutes);
-            s.setEventSessionVenue1(RandomDataUtil.randomVenue());
-            s.setEventSessionCapacity1(Math.max(aapAttendanceCount, RandomDataUtil.randomCapacity()));
-            List<String> refs = new ArrayList<>();
-            for (int k = 0; k < aapAttendanceCount; k++) {
-                String pid = ids.get((row * aapAttendanceCount + k) % n);
-                refs.add(pid);
+        for (Patient patient : patients) {
+            for (int attendanceIndex = 0; attendanceIndex < aapAttendanceCount; attendanceIndex++) {
+                EventSession s = new EventSession();
+                s.setCompositionId(RandomDataUtil.uuid32());
+                s.setNumberOfEventSessions(1);
+                s.setEventSessionId1(RandomDataUtil.randomEventId());
+                s.setEventSessionMode1(modeOfEvent.isBlank() ? "In-person" : modeOfEvent);
+                LocalDateTime sessionStart = startBase.plusDays(attendanceIndex);
+                LocalDateTime sessionEnd = endBase.plusDays(attendanceIndex);
+                s.setEventSessionStartDate1(RandomDataUtil.isoTimestampWithOffset(sessionStart, "+08:00"));
+                s.setEventSessionEndDate1(RandomDataUtil.isoTimestampWithOffset(sessionEnd, "+08:00"));
+                s.setEventSessionDuration1(durationMinutes);
+                s.setEventSessionVenue1(RandomDataUtil.randomVenue());
+                s.setEventSessionCapacity1(Math.max(1, RandomDataUtil.randomCapacity()));
+                s.setEventSessionPatientReferences1(patient.getPatientId());
+                s.setAttendedIndicator(true);
+                s.setPurposeOfContact(purpose);
+                applyEventOverrides(s, overrides);
+                list.add(s);
             }
-            s.setEventSessionPatientReferences1(String.join("##", refs));
-            s.setAttendedIndicator(true);
-            s.setPurposeOfContact(purpose);
-            applyEventOverrides(s, overrides);
-            list.add(s);
         }
         if (!list.isEmpty()) {
             AppState.addHighlightedEventSessionCompositionId(
@@ -291,9 +288,11 @@ public final class ScenarioGenerationService {
     private static List<Encounter> generateEncountersForScenario(List<Patient> patients,
                                                                  LocalDate contactDate,
                                                                  String purpose,
+                                                                 int contactLogCount,
                                                                  List<ScenarioTestCase.ColumnOverride> overrides) {
         List<Encounter> list = new ArrayList<>();
         if (patients.isEmpty()) return List.of();
+        if (contactLogCount <= 0) contactLogCount = 1;
         if (contactDate == null) contactDate = LocalDate.now();
         LocalDateTime start = contactDate.atTime(10, 0);
 
@@ -304,18 +303,21 @@ public final class ScenarioGenerationService {
         Random rnd = new Random();
 
         for (Patient p : patients) {
-            Encounter e = new Encounter();
-            e.setEncounterId(RandomDataUtil.uuid32().toUpperCase(Locale.ROOT));
-            e.setEncounterStatus("finished");
-            e.setEncounterDisplay(displays[rnd.nextInt(displays.length)]);
-            e.setEncounterStart(RandomDataUtil.isoTimestampWithOffset(start, "+08:00"));
-            e.setEncounterPurpose(purpose.isBlank() ? "Befriending" : purpose);
-            String staffName = prefixes[rnd.nextInt(prefixes.length)] + " " + staff[rnd.nextInt(staff.length)];
-            e.setEncounterContactedStaffName(staffName);
-            e.setEncounterReferredBy(referred[rnd.nextInt(referred.length)]);
-            e.setEncounterPatientReference(p.getPatientId());
-            applyEncounterOverrides(e, overrides);
-            list.add(e);
+            for (int i = 0; i < contactLogCount; i++) {
+                Encounter e = new Encounter();
+                e.setEncounterId(RandomDataUtil.uuid32().toUpperCase(Locale.ROOT));
+                e.setEncounterStatus("finished");
+                e.setEncounterDisplay(displays[rnd.nextInt(displays.length)]);
+                LocalDateTime encounterStart = start.plusDays(i % 3).plusMinutes(30L * i);
+                e.setEncounterStart(RandomDataUtil.isoTimestampWithOffset(encounterStart, "+08:00"));
+                e.setEncounterPurpose(purpose.isBlank() ? "Befriending" : purpose);
+                String staffName = prefixes[rnd.nextInt(prefixes.length)] + " " + staff[rnd.nextInt(staff.length)];
+                e.setEncounterContactedStaffName(staffName);
+                e.setEncounterReferredBy(referred[rnd.nextInt(referred.length)]);
+                e.setEncounterPatientReference(p.getPatientId());
+                applyEncounterOverrides(e, overrides);
+                list.add(e);
+            }
         }
         if (!list.isEmpty()) {
             AppState.addHighlightedEncounterId(list.get(0).getEncounterId());

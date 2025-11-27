@@ -11,14 +11,19 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
 import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * NRIC generator utility.
  * - generateNRIC(): tries Selenium (headless Chrome) against samliew.com; falls back to offline generator on failure.
- * - generateFakeNRIC(): offline deterministic NRIC (Singapore-like checksum) for local use.
+ * - generateFakeNRIC(): offline deterministic NRIC (Singapore-like checksum) for local use, produced sequentially and cached to avoid repeats.
  */
 public final class NRICGeneratorUtil {
     private static final Random RND = new Random();
+    private static final AtomicLong SEQUENTIAL_FAKE_COUNTER = new AtomicLong(1_000_000L);
+    private static final Set<String> SEEN_FAKE_NRIC = ConcurrentHashMap.newKeySet();
 
     private NRICGeneratorUtil() {}
 
@@ -83,24 +88,43 @@ public final class NRICGeneratorUtil {
      * This produces values that pass the checksum format but are synthetic.
      */
     public static String generateFakeNRIC() {
-        char prefix = RND.nextBoolean() ? 'S' : 'T';
-        int[] digits = new int[7];
-        for (int i = 0; i < 7; i++) digits[i] = RND.nextInt(10);
+        for (int attempt = 0; attempt < 20; attempt++) {
+            String candidate = attempt < 10 ? nextSequentialFakeNric() : nextRandomFakeNric();
+            if (SEEN_FAKE_NRIC.add(candidate)) {
+                return candidate;
+            }
+        }
+        String fallback = nextRandomFakeNric();
+        SEEN_FAKE_NRIC.add(fallback);
+        return fallback;
+    }
 
+    private static String nextSequentialFakeNric() {
+        long seq = SEQUENTIAL_FAKE_COUNTER.getAndUpdate(cur -> cur >= 9_999_999L ? 1_000_000L : cur + 1);
+        String digits = String.format("%07d", seq % 10_000_000L);
+        char prefix = (seq % 2 == 0) ? 'S' : 'T';
+        return withChecksum(prefix, digits);
+    }
+
+    private static String nextRandomFakeNric() {
+        char prefix = RND.nextBoolean() ? 'S' : 'T';
+        StringBuilder digits = new StringBuilder();
+        for (int i = 0; i < 7; i++) digits.append(RND.nextInt(10));
+        return withChecksum(prefix, digits.toString());
+    }
+
+    private static String withChecksum(char prefix, String digitString) {
         int[] weights = {2, 7, 6, 5, 4, 3, 2};
         int sum = 0;
-        for (int i = 0; i < 7; i++) sum += digits[i] * weights[i];
+        for (int i = 0; i < 7; i++) {
+            int digit = Character.digit(digitString.charAt(i), 10);
+            sum += digit * weights[i];
+        }
         if (prefix == 'T') sum += 4; // offset for T
 
         int remainder = sum % 11;
-        // Mapping per spec for S/T
         char[] map = {'A','B','C','D','E','F','G','H','I','Z','J'};
         char checksum = map[10 - remainder];
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(prefix);
-        for (int d : digits) sb.append(d);
-        sb.append(checksum);
-        return sb.toString();
+        return "" + prefix + digitString + checksum;
     }
 }
