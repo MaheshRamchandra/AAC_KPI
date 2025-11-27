@@ -8,6 +8,7 @@ import com.aac.kpi.model.Practitioner;
 import com.aac.kpi.model.QuestionnaireResponse;
 import com.aac.kpi.service.AppState;
 import com.aac.kpi.service.JsonExportService;
+import com.aac.kpi.service.ValidationService;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -26,6 +27,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.stream.Collectors;
 
 public class JsonExportController {
     @FXML private TextField jarPathField;
@@ -137,6 +139,43 @@ public class JsonExportController {
         } catch (IllegalArgumentException | IOException ex) {
             showAlert("Auto-fill failed: " + ex.getMessage());
         }
+    }
+
+    @FXML
+    private void onDryRun() {
+        int patientCount = patients != null ? patients.size() : 0;
+        int sessionCount = sessions != null ? sessions.size() : 0;
+        int practitionerCount = practitioners != null ? practitioners.size() : 0;
+        int encounterCount = encounters != null ? encounters.size() : 0;
+        int questionnaireCount = questionnaires != null ? questionnaires.size() : 0;
+        int commonCount = commonRows != null ? commonRows.size() : 0;
+
+        ValidationService.Summary summary = ValidationService.summarize(
+                patients != null ? patients : javafx.collections.FXCollections.observableArrayList(),
+                sessions != null ? sessions : javafx.collections.FXCollections.observableArrayList(),
+                encounters != null ? encounters : javafx.collections.FXCollections.observableArrayList(),
+                commonRows != null ? commonRows : javafx.collections.FXCollections.observableArrayList());
+
+        StringBuilder details = new StringBuilder();
+        details.append("Dry run (no export executed)\n\n");
+        details.append("Counts:\n");
+        details.append("• Patients: ").append(patientCount).append("\n");
+        details.append("• Event Sessions: ").append(sessionCount).append("\n");
+        details.append("• Practitioners: ").append(practitionerCount).append("\n");
+        details.append("• Encounters: ").append(encounterCount).append("\n");
+        details.append("• Questionnaires: ").append(questionnaireCount).append("\n");
+        details.append("• Common rows: ").append(commonCount).append("\n\n");
+        details.append(summary.summaryLine()).append("\n");
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("JSON Export Dry Run");
+        alert.setHeaderText("Pre-flight summary (data not changed)");
+        TextArea area = new TextArea(details.toString());
+        area.setEditable(false);
+        area.setWrapText(true);
+        area.setPrefRowCount(10);
+        alert.getDialogPane().setContent(area);
+        alert.showAndWait();
     }
 
     @FXML

@@ -24,6 +24,7 @@
                 <Menu text="Tools">
                     <items>
                         <MenuItem text="Run Data Quality Check" onAction="#onRunQualityCheck"/>
+                        <MenuItem text="View Validation Details" onAction="#onShowValidationDetails"/>
                     </items>
                 </Menu>
             </menus>

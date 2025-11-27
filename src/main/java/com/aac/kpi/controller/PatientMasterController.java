@@ -22,6 +22,7 @@ public class PatientMasterController {
     private Runnable clearAllHandler;
     private Label statusLabel;
     private final Set<Patient> highlightedGeneratedPatients = new HashSet<>();
+    private final Set<Patient> issueHighlights = new HashSet<>();
 
     @FXML private TableView<Patient> table;
     @FXML private TableColumn<Patient, String> cPatientId;
@@ -51,7 +52,7 @@ public class PatientMasterController {
         table.getSelectionModel().setCellSelectionEnabled(true);
         table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         installCopyHandler();
-        TableHighlightSupport.install(table, highlightedGeneratedPatients);
+        TableHighlightSupport.install(table, highlightedGeneratedPatients, issueHighlights);
     }
 
     @FXML
@@ -253,6 +254,10 @@ public class PatientMasterController {
     private void clearGeneratedPatientsHighlight() {
         TableHighlightSupport.clear(table, highlightedGeneratedPatients);
         AppState.clearHighlightedPatientIds();
+    }
+
+    public void highlightIssues(Collection<Patient> issues) {
+        TableHighlightSupport.replace(table, issues, issueHighlights);
     }
 
     @FXML

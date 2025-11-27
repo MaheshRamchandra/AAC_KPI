@@ -636,6 +636,19 @@ public class AiOverlayController {
             this.type = type;
         }
     }
+
+    private static final class Rect {
+        final double x;
+        final double y;
+        final double w;
+        final double h;
+        Rect(double x, double y, double w, double h) {
+            this.x = x;
+            this.y = y;
+            this.w = w;
+            this.h = h;
+        }
+    }
     private String text(TextField field, String fallback) {
         if (field == null || field.getText() == null || field.getText().isBlank()) return fallback;
         return field.getText().trim();

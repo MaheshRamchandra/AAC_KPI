@@ -5,6 +5,7 @@ import com.aac.kpi.service.AppState;
 import com.aac.kpi.service.CommonBuilderService;
 import com.aac.kpi.service.ExcelReader;
 import com.aac.kpi.service.ExcelWriter;
+import com.aac.kpi.ui.TableHighlightSupport;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -25,6 +26,7 @@ public class CommonController {
     private ObservableList<QuestionnaireResponse> questionnaires;
     private Label statusLabel;
     private Runnable clearAllHandler;
+    private final java.util.Set<CommonRow> issueHighlights = new java.util.HashSet<>();
 
     @FXML private TableView<CommonRow> table;
     @FXML private TableColumn<CommonRow, String> cComp;
@@ -57,6 +59,7 @@ public class CommonController {
         this.questionnaires = questionnaires;
         this.statusLabel = statusLabel;
         table.setItems(this.commons);
+        TableHighlightSupport.install(table, issueHighlights);
     }
 
     @FXML private void initialize() {
@@ -154,6 +157,10 @@ public class CommonController {
 
     // Allow MainController to fetch current items for export
     public java.util.List<CommonRow> getItems() { return table != null ? table.getItems() : java.util.List.of(); }
+
+    public void highlightIssues(java.util.Collection<CommonRow> issues) {
+        TableHighlightSupport.replace(table, issues, issueHighlights);
+    }
 
     private void updateStatus() {
         if (statusLabel != null) {

@@ -35,6 +35,7 @@ public class EventSessionController {
     private Label statusLabel;
     private Runnable clearAllHandler;
     private final Set<EventSession> highlightedGeneratedSessions = new HashSet<>();
+    private final Set<EventSession> issueHighlights = new HashSet<>();
 
     @FXML private TableView<EventSession> table;
     @FXML private TableColumn<EventSession, String> cCompId;
@@ -59,7 +60,7 @@ public class EventSessionController {
         table.getSelectionModel().setCellSelectionEnabled(true);
         table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         installCopyHandler();
-        TableHighlightSupport.install(table, highlightedGeneratedSessions);
+        TableHighlightSupport.install(table, highlightedGeneratedSessions, issueHighlights);
     }
 
     @FXML
@@ -336,6 +337,10 @@ public class EventSessionController {
 
     public void refreshTable() {
         if (table != null) table.refresh();
+    }
+
+    public void highlightIssues(Collection<EventSession> issues) {
+        TableHighlightSupport.replace(table, issues, issueHighlights);
     }
 
     public void setClearAllHandler(Runnable handler) {

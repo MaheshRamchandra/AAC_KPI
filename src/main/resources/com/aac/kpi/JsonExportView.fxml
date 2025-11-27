@@ -63,6 +63,7 @@
             <Button fx:id="autoFillButton" text="Auto-fill counts" onAction="#onAutoFillCounts" />
             <Button fx:id="useCurrentExcelButton" text="Use current Excel" onAction="#onUseCurrentExcel" />
             <Region HBox.hgrow="ALWAYS" />
+            <Button text="Dry Run" onAction="#onDryRun"/>
             <Button fx:id="runButton" text="Run JSON export" onAction="#onRunExport" />
         </HBox>
 

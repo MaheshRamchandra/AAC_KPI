@@ -39,7 +39,11 @@ import javafx.stage.Window;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class MainController {
@@ -404,6 +408,104 @@ public class MainController {
         statusLabel.setText("Quality check completed.");
     }
 
+    @FXML
+    private void onShowValidationDetails() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Validation Details");
+        alert.setHeaderText("Issues detected (read-only)");
+        TextArea area = new TextArea(buildIssueDetails());
+        area.setEditable(false);
+        area.setWrapText(true);
+        area.setPrefRowCount(18);
+        alert.getDialogPane().setContent(area);
+        alert.showAndWait();
+    }
+
+    private String buildIssueDetails() {
+        StringBuilder sb = new StringBuilder();
+
+        // Patient checks
+        Map<String, List<Integer>> idToRows = new HashMap<>();
+        for (int i = 0; i < patients.size(); i++) {
+            String id = patients.get(i).getPatientId();
+            if (!isBlank(id)) {
+                idToRows.computeIfAbsent(id, k -> new ArrayList<>()).add(i + 1);
+            }
+        }
+        List<String> missingPatientIds = new ArrayList<>();
+        for (int i = 0; i < patients.size(); i++) {
+            if (isBlank(patients.get(i).getPatientId())) {
+                missingPatientIds.add("Row " + (i + 1));
+            }
+        }
+        List<String> duplicatePatients = idToRows.entrySet().stream()
+                .filter(e -> e.getValue().size() > 1)
+                .map(e -> e.getKey() + " rows " + e.getValue())
+                .toList();
+
+        // Event session checks
+        List<String> missingComp = new ArrayList<>();
+        List<String> missingDates = new ArrayList<>();
+        for (int i = 0; i < sessions.size(); i++) {
+            EventSession s = sessions.get(i);
+            if (isBlank(s.getCompositionId())) missingComp.add("Row " + (i + 1));
+            if (isBlank(s.getEventSessionStartDate1()) || isBlank(s.getEventSessionEndDate1())) {
+                missingDates.add("Row " + (i + 1));
+            }
+        }
+
+        // Common checks
+        Set<String> patientIds = new HashSet<>(idToRows.keySet());
+        Set<String> sessionIds = sessions.stream()
+                .map(EventSession::getCompositionId)
+                .filter(id -> !isBlank(id))
+                .collect(Collectors.toSet());
+        List<String> missingCommonPatient = new ArrayList<>();
+        List<String> missingCommonEvents = new ArrayList<>();
+        List<String> invalidCommonPatient = new ArrayList<>();
+        List<String> invalidCommonEvents = new ArrayList<>();
+        for (int i = 0; i < commonRows.size(); i++) {
+            CommonRow c = commonRows.get(i);
+            if (isBlank(c.getPatientReference())) missingCommonPatient.add("Row " + (i + 1));
+            if (isBlank(c.getAttendedEventReferences())) missingCommonEvents.add("Row " + (i + 1));
+            if (!isBlank(c.getPatientReference()) && !patientIds.contains(c.getPatientReference())) {
+                invalidCommonPatient.add("Row " + (i + 1) + " -> " + c.getPatientReference());
+            }
+            if (!isBlank(c.getAttendedEventReferences())) {
+                for (String token : splitRefs(c.getAttendedEventReferences())) {
+                    if (!token.isBlank() && !sessionIds.contains(token)) {
+                        invalidCommonEvents.add("Row " + (i + 1) + " -> " + token);
+                        break;
+                    }
+                }
+            }
+        }
+
+        sb.append("Patient Master\n");
+        sb.append(missingPatientIds.isEmpty() ? " - Missing patient_id: none\n"
+                : " - Missing patient_id: " + missingPatientIds + "\n");
+        sb.append(duplicatePatients.isEmpty() ? " - Duplicate patient_id: none\n"
+                : " - Duplicate patient_id: " + duplicatePatients + "\n\n");
+
+        sb.append("Event Session\n");
+        sb.append(missingComp.isEmpty() ? " - Missing composition_id: none\n"
+                : " - Missing composition_id: " + missingComp + "\n");
+        sb.append(missingDates.isEmpty() ? " - Missing start/end dates: none\n"
+                : " - Missing start/end dates: " + missingDates + "\n\n");
+
+        sb.append("Common\n");
+        sb.append(missingCommonPatient.isEmpty() ? " - Missing patient_reference: none\n"
+                : " - Missing patient_reference: " + missingCommonPatient + "\n");
+        sb.append(missingCommonEvents.isEmpty() ? " - Missing attended_event_references: none\n"
+                : " - Missing attended_event_references: " + missingCommonEvents + "\n");
+        sb.append(invalidCommonPatient.isEmpty() ? " - Invalid patient_reference: none\n"
+                : " - Invalid patient_reference: " + invalidCommonPatient + "\n");
+        sb.append(invalidCommonEvents.isEmpty() ? " - Invalid attended_event_references: none\n"
+                : " - Invalid attended_event_references: " + invalidCommonEvents + "\n");
+        return sb.toString();
+    }
+
+
     private java.util.List<com.aac.kpi.model.CommonRow> commonControllerItems() {
         // ask controller for its current items; if controller ever null, return empty
         try {
@@ -442,6 +544,8 @@ public class MainController {
                 patients.size(), sessions.size(), practitioners.size(), encounters.size(), questionnaires.size(),
                 dirty));
         updateHealth();
+        updateTabBadges();
+        updateRowHighlights();
     }
 
     private void updateHealth() {
@@ -455,8 +559,115 @@ public class MainController {
         healthLabel.setTextFill(summary.hasIssues() ? Color.web("#c62828") : Color.web("#2e7d32"));
     }
 
+    private void updateTabBadges() {
+        applyBadge(patientTab, baseLabel(patientTab, "Patient Master"), patientIssues());
+        applyBadge(eventTab, baseLabel(eventTab, "Event Session"), eventIssues());
+        applyBadge(commonTab, baseLabel(commonTab, "Common"), commonIssues());
+        // Other tabs left unchanged (read-only/logic).
+    }
+
+    private void applyBadge(Tab tab, String base, int issues) {
+        if (tab == null) return;
+        tab.setUserData(base);
+        tab.setText(issues > 0 ? base + " ⚠" + issues : base);
+    }
+
+    private String baseLabel(Tab tab, String fallback) {
+        if (tab == null) return fallback;
+        Object data = tab.getUserData();
+        if (data instanceof String s && !s.isBlank()) return s;
+        String txt = tab.getText();
+        return txt == null || txt.isBlank() ? fallback : txt.replaceAll(" ⚠\\d+", "");
+    }
+
+    private int patientIssues() {
+        int missingId = (int) patients.stream().filter(p -> isBlank(p.getPatientId())).count();
+        int dupId = (int) patients.stream()
+                .map(Patient::getPatientId)
+                .filter(id -> !isBlank(id))
+                .collect(Collectors.groupingBy(id -> id, Collectors.counting()))
+                .values().stream().filter(c -> c > 1).count();
+        return missingId + dupId;
+    }
+
+    private int eventIssues() {
+        int missingComp = (int) sessions.stream().filter(s -> isBlank(s.getCompositionId())).count();
+        int missingDates = (int) sessions.stream()
+                .filter(s -> isBlank(s.getEventSessionStartDate1()) || isBlank(s.getEventSessionEndDate1()))
+                .count();
+        return missingComp + missingDates;
+    }
+
+    private int commonIssues() {
+        int missingPatient = (int) commonRows.stream().filter(c -> isBlank(c.getPatientReference())).count();
+        int missingEvents = (int) commonRows.stream().filter(c -> isBlank(c.getAttendedEventReferences())).count();
+        return missingPatient + missingEvents;
+    }
+
+    private void updateRowHighlights() {
+        if (patientController != null) {
+            Map<String, List<Patient>> pidMap = patients.stream()
+                    .filter(p -> !isBlank(p.getPatientId()))
+                    .collect(Collectors.groupingBy(Patient::getPatientId));
+            Set<Patient> issues = new HashSet<>();
+            for (Patient p : patients) {
+                if (isBlank(p.getPatientId())) {
+                    issues.add(p);
+                } else if (pidMap.getOrDefault(p.getPatientId(), List.of()).size() > 1) {
+                    issues.add(p);
+                }
+            }
+            patientController.highlightIssues(issues);
+        }
+        if (eventController != null) {
+            Set<EventSession> issues = new HashSet<>();
+            for (EventSession s : sessions) {
+                if (isBlank(s.getCompositionId())
+                        || isBlank(s.getEventSessionStartDate1())
+                        || isBlank(s.getEventSessionEndDate1())) {
+                    issues.add(s);
+                }
+            }
+            eventController.highlightIssues(issues);
+        }
+        if (commonController != null) {
+            Set<String> patientIds = patients.stream()
+                    .map(Patient::getPatientId)
+                    .filter(id -> !isBlank(id))
+                    .collect(Collectors.toSet());
+            Set<String> sessionIds = sessions.stream()
+                    .map(EventSession::getCompositionId)
+                    .filter(id -> !isBlank(id))
+                    .collect(Collectors.toSet());
+            Set<CommonRow> issues = new HashSet<>();
+            for (CommonRow c : commonRows) {
+                if (isBlank(c.getPatientReference())
+                        || isBlank(c.getAttendedEventReferences())) {
+                    issues.add(c);
+                }
+                if (!isBlank(c.getPatientReference()) && !patientIds.contains(c.getPatientReference())) {
+                    issues.add(c);
+                }
+                if (!isBlank(c.getAttendedEventReferences())) {
+                    for (String token : splitRefs(c.getAttendedEventReferences())) {
+                        if (!token.isBlank() && !sessionIds.contains(token)) {
+                            issues.add(c);
+                            break;
+                        }
+                    }
+                }
+            }
+            commonController.highlightIssues(issues);
+        }
+    }
+
     private boolean isBlank(String v) {
         return v == null || v.trim().isEmpty();
+    }
+
+    private List<String> splitRefs(String value) {
+        if (value == null) return List.of();
+        return List.of(value.split("[,#|;]+|##"));
     }
 
     private void clearAllSheets() {
