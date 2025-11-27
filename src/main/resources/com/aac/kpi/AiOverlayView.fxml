@@ -121,6 +121,7 @@ Scenarios: selecting a scenario overlays its overrides for explanation and previ
                             <Label text="Dependency Graph"/>
                             <CheckBox fx:id="showColumnsToggle" text="Show column rules" selected="true"/>
                             <CheckBox fx:id="showEdgeLabelsToggle" text="Show edge labels" selected="false"/>
+                            <CheckBox fx:id="highlightSelectedToggle" text="Highlight selected sheet" selected="true"/>
                             <Label text="Zoom"/>
                             <Slider fx:id="zoomSlider" min="0.6" max="2.0" value="1.0" prefWidth="140"/>
                             <Label fx:id="zoomLabel" text="100%"/>
@@ -128,7 +129,24 @@ Scenarios: selecting a scenario overlays its overrides for explanation and previ
                             <Button fx:id="openFullScreenButton" text="Open Full Screen" onAction="#onOpenGraphFullScreen"/>
                             <Button text="Refresh Graph" onAction="#onRefreshGraph"/>
                         </HBox>
-                        <ScrollPane fitToWidth="false" fitToHeight="false" prefViewportHeight="320">
+                        <HBox spacing="12" alignment="TOP_LEFT">
+                            <VBox spacing="4">
+                                <Label text="Filter sheets"/>
+                                <ListView fx:id="filterList" prefHeight="140" prefWidth="220"/>
+                                <HBox spacing="6">
+                                    <Button fx:id="selectAllFilterButton" text="Select All" onAction="#onSelectAllFilters"/>
+                                    <Button fx:id="applyFilterButton" text="Apply Filter" onAction="#onApplyFilters"/>
+                                </HBox>
+                            </VBox>
+                            <VBox spacing="6">
+                                <Label text="Graph actions"/>
+                                <HBox spacing="8">
+                                    <Button fx:id="copyMermaidButton" text="Copy Mermaid" onAction="#onCopyMermaid"/>
+                                </HBox>
+                                <Label fx:id="legendLabel" wrapText="true" prefWidth="320"/>
+                            </VBox>
+                        </HBox>
+                        <ScrollPane fitToWidth="true" fitToHeight="true" prefViewportHeight="320">
                             <content>
                                 <StackPane>
                                     <Canvas fx:id="dependencyCanvas" width="1400" height="900"/>

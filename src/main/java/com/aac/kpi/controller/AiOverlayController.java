@@ -11,7 +11,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.scene.canvas.Canvas;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -20,19 +20,28 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.SelectionMode;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.control.ScrollPane;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -70,18 +79,28 @@ public class AiOverlayController {
     @FXML private Canvas dependencyCanvas;
     @FXML private CheckBox showColumnsToggle;
     @FXML private CheckBox showEdgeLabelsToggle;
+    @FXML private CheckBox highlightSelectedToggle;
     @FXML private Slider zoomSlider;
     @FXML private Label zoomLabel;
     @FXML private Label statusLabel;
+    @FXML private Label legendLabel;
     @FXML private Button runButton;
     @FXML private Button applyButton;
     @FXML private Button openFullScreenButton;
+    @FXML private Button applyFilterButton;
+    @FXML private Button selectAllFilterButton;
+    @FXML private Button copyMermaidButton;
+    @FXML private ListView<String> filterList;
 
     private RagRuleService ragService;
     private final ObservableList<RuleCardRow> rows = FXCollections.observableArrayList();
+    private final Set<String> visibleSheets = new HashSet<>();
     private double zoomFactor = 1.0;
+    private static final double MIN_ZOOM = 0.6;
+    private static final double MAX_ZOOM = 2.0;
     private static final double BASE_WIDTH = 1400;
     private static final double BASE_HEIGHT = 900;
+    private static final double MAX_CANVAS_DIM = 4096;
 
     public void init(ObservableList<Patient> patients,
                      ObservableList<EventSession> sessions,
@@ -98,6 +117,13 @@ public class AiOverlayController {
                 sheetList.getSelectionModel().select(0);
             }
         }
+        if (filterList != null) {
+            filterList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+            filterList.getItems().setAll(ragService.sheetNames());
+            filterList.getSelectionModel().selectAll();
+            visibleSheets.clear();
+            visibleSheets.addAll(filterList.getItems());
+        }
         if (scenarioBox != null) {
             scenarioBox.getItems().setAll(ragService.scenarioNames());
             scenarioBox.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> loadRules());
@@ -105,22 +131,25 @@ public class AiOverlayController {
         if (statusLabel != null) {
             statusLabel.setText("RAG Rule Builder: click a column to view logic, mappings, dependencies, and live preview.");
         }
+        if (legendLabel != null) {
+            legendLabel.setText("Legend: sheet clusters colored; columns shown only when used; edges labeled by logic (if enabled); filters limit visible sheets.");
+        }
         if (showColumnsToggle != null) {
             showColumnsToggle.selectedProperty().addListener((obs, ov, nv) -> drawGraph());
         }
         if (showEdgeLabelsToggle != null) {
             showEdgeLabelsToggle.selectedProperty().addListener((obs, ov, nv) -> drawGraph());
         }
+        if (highlightSelectedToggle != null) {
+            highlightSelectedToggle.setSelected(true);
+            highlightSelectedToggle.selectedProperty().addListener((obs, ov, nv) -> drawGraph());
+        }
         if (zoomSlider != null) {
-            zoomSlider.setMin(0.6);
-            zoomSlider.setMax(2.0);
+            zoomSlider.setMin(MIN_ZOOM);
+            zoomSlider.setMax(MAX_ZOOM);
             zoomSlider.setBlockIncrement(0.1);
             zoomSlider.setValue(1.0);
-            zoomSlider.valueProperty().addListener((obs, ov, nv) -> {
-                zoomFactor = nv == null ? 1.0 : nv.doubleValue();
-                updateZoomLabel();
-                drawGraph();
-            });
+            zoomSlider.valueProperty().addListener((obs, ov, nv) -> setZoom(nv == null ? 1.0 : nv.doubleValue(), dependencyCanvas, zoomSlider, null));
             updateZoomLabel();
         }
     }
@@ -192,6 +221,35 @@ public class AiOverlayController {
         drawGraph();
     }
 
+    @FXML
+    private void onApplyFilters() {
+        if (filterList == null) return;
+        visibleSheets.clear();
+        visibleSheets.addAll(filterList.getSelectionModel().getSelectedItems());
+        if (visibleSheets.isEmpty()) {
+            visibleSheets.addAll(filterList.getItems());
+        }
+        drawGraph();
+    }
+
+    @FXML
+    private void onSelectAllFilters() {
+        if (filterList == null) return;
+        filterList.getSelectionModel().selectAll();
+        visibleSheets.clear();
+        visibleSheets.addAll(filterList.getItems());
+        drawGraph();
+    }
+
+    @FXML
+    private void onCopyMermaid() {
+        String mermaid = buildMermaid();
+        ClipboardContent content = new ClipboardContent();
+        content.putString(mermaid);
+        Clipboard.getSystemClipboard().setContent(content);
+        setStatus("Copied Mermaid graph to clipboard.");
+    }
+
     private void loadRules() {
         String sheet = sheetList != null ? sheetList.getSelectionModel().getSelectedItem() : "";
         if (sheet == null || sheet.isBlank()) return;
@@ -241,17 +299,39 @@ public class AiOverlayController {
                 dependencyCanvas != null ? dependencyCanvas.getHeight() : BASE_HEIGHT);
         StackPane pane = new StackPane(canvas);
         ScrollPane scroll = new ScrollPane(pane);
+        scroll.setFitToWidth(false);
+        scroll.setFitToHeight(false);
         scroll.setPannable(true);
-        Scene scene = new Scene(scroll, 1600, 900);
+        Label zoomDisplay = new Label(String.format("%.0f%%", zoomFactor * 100));
+        Slider fsSlider = new Slider(MIN_ZOOM, MAX_ZOOM, zoomFactor);
+        fsSlider.setBlockIncrement(0.1);
+        fsSlider.valueProperty().addListener((obs, ov, nv) -> {
+            setZoom(nv == null ? zoomFactor : nv.doubleValue(), canvas, fsSlider, zoomDisplay);
+        });
+        Button zoomOut = new Button("-");
+        zoomOut.setOnAction(e -> setZoom(zoomFactor - 0.1, canvas, fsSlider, zoomDisplay));
+        Button zoomIn = new Button("+");
+        zoomIn.setOnAction(e -> setZoom(zoomFactor + 0.1, canvas, fsSlider, zoomDisplay));
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox controls = new HBox(8, zoomOut, fsSlider, zoomIn, zoomDisplay, spacer);
+        controls.setPadding(new Insets(8, 12, 8, 12));
+        Scene scene = new Scene(new BorderPane(scroll, controls, null, null, null), 1600, 900);
         Stage stage = new Stage();
         stage.setTitle("Dependency Mind Map");
         stage.setScene(scene);
         stage.setMaximized(true);
         scroll.viewportBoundsProperty().addListener((obs, ov, nv) -> {
-            canvas.setWidth(Math.max(BASE_WIDTH * zoomFactor, nv.getWidth()));
-            canvas.setHeight(Math.max(BASE_HEIGHT * zoomFactor, nv.getHeight()));
+            double w = clampDim(Math.max(BASE_WIDTH * zoomFactor, nv.getWidth() * zoomFactor));
+            double h = clampDim(Math.max(BASE_HEIGHT * zoomFactor, nv.getHeight() * zoomFactor));
+            canvas.setWidth(w);
+            canvas.setHeight(h);
             renderGraph(canvas);
         });
+        double initW = clampDim(Math.max(BASE_WIDTH * zoomFactor, scroll.getViewportBounds().getWidth() * zoomFactor));
+        double initH = clampDim(Math.max(BASE_HEIGHT * zoomFactor, scroll.getViewportBounds().getHeight() * zoomFactor));
+        canvas.setWidth(initW);
+        canvas.setHeight(initH);
         stage.show();
         renderGraph(canvas);
     }
@@ -266,16 +346,28 @@ public class AiOverlayController {
         double zoom = zoomFactor <= 0 ? 1.0 : zoomFactor;
         GraphicsContext gc = canvas.getGraphicsContext2D();
         List<RagRuleService.DependencyEdge> edges = ragService.dependencyGraph();
-        List<String> sheets = ragService.sheetNames();
+        List<String> allSheets = ragService.sheetNames();
+        Set<String> allowed = visibleSheets.isEmpty() ? new HashSet<>(allSheets) : new HashSet<>(visibleSheets);
+        List<String> sheets = allSheets.stream().filter(allowed::contains).toList();
+        String selectedSheet = (sheetList != null && highlightSelectedToggle != null && highlightSelectedToggle.isSelected())
+                ? sheetList.getSelectionModel().getSelectedItem()
+                : null;
+        double faded = 0.22;
         boolean showColumns = showColumnsToggle != null && showColumnsToggle.isSelected();
         boolean showEdgeLabels = showEdgeLabelsToggle != null && showEdgeLabelsToggle.isSelected();
 
         // Radial mind-map layout
-        double w = BASE_WIDTH;
-        double h = BASE_HEIGHT;
-        double cx = w / 2;
-        double cy = h / 2;
-        double radius = Math.min(w, h) / 2.6;
+        double layoutW = Math.max(BASE_WIDTH, canvas.getWidth() / zoom);
+        double layoutH = Math.max(BASE_HEIGHT, canvas.getHeight() / zoom);
+        double desiredW = clampDim(layoutW * zoom);
+        double desiredH = clampDim(layoutH * zoom);
+        if (Math.abs(desiredW - canvas.getWidth()) > 1 || Math.abs(desiredH - canvas.getHeight()) > 1) {
+            canvas.setWidth(desiredW);
+            canvas.setHeight(desiredH);
+        }
+        double cx = layoutW / 2;
+        double cy = layoutH / 2;
+        double radius = Math.min(layoutW, layoutH) / 2.6;
         int n = Math.max(1, sheets.size());
         Map<String, double[]> pos = new HashMap<>();
         Map<String, Color> sheetColors = new HashMap<>();
@@ -292,15 +384,15 @@ public class AiOverlayController {
             sheetColors.put(sheets.get(i), palette[i % palette.length]);
         }
 
-        canvas.setWidth(w * zoom);
-        canvas.setHeight(h * zoom);
         gc.setFill(Color.WHITE);
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
         // Sheets
         for (String sheet : sheets) {
             double[] p = pos.get(sheet);
-            drawNode(gc, p[0] * zoom, p[1] * zoom, sheet, zoom, true, sheetColors.get(sheet));
+            boolean isSelected = selectedSheet != null && selectedSheet.equals(sheet);
+            double alpha = selectedSheet == null || isSelected ? 1.0 : faded;
+            drawNode(gc, p[0] * zoom, p[1] * zoom, sheet, zoom, true, sheetColors.get(sheet), alpha);
         }
 
         // Sheet-to-sheet edges
@@ -309,8 +401,10 @@ public class AiOverlayController {
             double[] a = pos.get(e.fromSheet());
             double[] b = pos.get(e.toSheet());
             if (a == null || b == null) continue;
+            boolean relevant = selectedSheet == null || selectedSheet.equals(e.fromSheet()) || selectedSheet.equals(e.toSheet());
+            double alpha = relevant ? 0.85 : faded;
             Color c = sheetColors.getOrDefault(e.fromSheet(), Color.web("#607d8b"));
-            gc.setStroke(c.deriveColor(0, 1, 1, 0.85));
+            gc.setStroke(c.deriveColor(0, 1, 1, alpha));
             double y1 = (a[1] + 6) * zoom;
             double y2 = (b[1] - 6) * zoom;
             double midX = ((a[0] + b[0]) / 2) * zoom;
@@ -321,47 +415,79 @@ public class AiOverlayController {
             gc.stroke();
             if (showEdgeLabels) {
                 gc.setFill(Color.web("#263238"));
-                gc.fillText(trimLabel(e.fromColumn() + " → " + e.toColumn(), 40),
-                        midX - 60 * zoom, ctrlY + 14 * zoom);
+                String lbl = trimLabel(e.fromColumn() + " → " + e.toColumn(), 32);
+                gc.fillText(lbl, midX - 60 * zoom, ctrlY + 14 * zoom);
             }
         }
 
-        // Sheet -> column nodes
+        // Sheet -> column nodes (only columns that participate in dependencies)
         if (showColumns && ragService.ruleGraph() != null && ragService.ruleGraph().sheets != null) {
             gc.setStroke(Color.web("#b0bec5"));
             gc.setLineWidth(0.8 * zoom);
             for (var sheetRule : ragService.ruleGraph().sheets) {
                 double[] origin = pos.get(sheetRule.name);
-                if (origin == null) continue;
-                if (sheetRule.columns == null) continue;
+                if (origin == null || sheetRule.columns == null) continue;
+                var relevantCols = sheetRule.columns.stream()
+                        .filter(col -> (col.sourceSheet != null && !col.sourceSheet.isBlank())
+                                || hasDependents(sheetRule.name, col.name))
+                        .toList();
+                int cols = relevantCols.size();
+                if (cols == 0) continue;
                 double baseAngle = origin[2];
-                double colRadius = radius * 0.6;
-                int idx = 0;
-                for (var col : sheetRule.columns) {
-                    double offset = (idx - sheetRule.columns.size() / 2.0) * 0.14;
-                    double angle = baseAngle + offset;
-                    double cxCol = cx + (radius + colRadius) * Math.cos(angle);
-                    double cyCol = cy + (radius + colRadius) * Math.sin(angle);
-                    String label = trimLabel(col.name, 18) + " • " + trimLabel(col.logicType, 10) + " • " + trimLabel(col.format, 12);
-                    drawNode(gc, cxCol * zoom, cyCol * zoom, label, zoom, false, sheetColors.getOrDefault(sheetRule.name, Color.web("#90a4ae")));
+                double angleSpread = Math.min(Math.PI / 1.15, Math.max(0.35, cols * 0.1));
+                double startAngle = baseAngle - angleSpread / 2.0;
+                double step = cols <= 1 ? 0 : angleSpread / (cols - 1);
+                double colRadius = radius * (1.1 + Math.min(0.8, cols / 10.0));
+                for (int i = 0; i < cols; i++) {
+                    var col = relevantCols.get(i);
+                    double angle = startAngle + step * i;
+                    double cxCol = cx + colRadius * Math.cos(angle);
+                    double cyCol = cy + colRadius * Math.sin(angle);
+                    String label = trimLabel(col.name, 16) + " • " + trimLabel(col.logicType, 10);
+                    boolean relevant = selectedSheet == null || selectedSheet.equals(sheetRule.name)
+                            || (col.sourceSheet != null && col.sourceSheet.equals(selectedSheet));
+                    double alpha = relevant ? 1.0 : faded;
+                    drawNode(gc, cxCol * zoom, cyCol * zoom, label, zoom, false, sheetColors.getOrDefault(sheetRule.name, Color.web("#90a4ae")), alpha);
+                    gc.setStroke(Color.web("#b0bec5").deriveColor(0, 1, 1, alpha));
                     gc.strokeLine(origin[0] * zoom, origin[1] * zoom, cxCol * zoom, cyCol * zoom);
-                    idx++;
+                    // Column dependency arrows
+                    if (col.sourceSheet != null && !col.sourceSheet.isBlank() && col.sourceColumn != null) {
+                        String fromId = col.sourceSheet;
+                        String toId = sheetRule.name;
+                        double[] fromPos = pos.get(fromId);
+                        if (fromPos != null) {
+                            boolean edgeRelevant = selectedSheet == null || selectedSheet.equals(fromId) || selectedSheet.equals(toId);
+                            double edgeAlpha = edgeRelevant ? 0.9 : faded;
+                            gc.setStroke(sheetColors.getOrDefault(fromId, Color.web("#546e7a")).deriveColor(0, 1, 1, edgeAlpha));
+                            gc.setLineWidth(0.9 * zoom);
+                            gc.beginPath();
+                            gc.moveTo(fromPos[0] * zoom, fromPos[1] * zoom);
+                            gc.lineTo(cxCol * zoom, cyCol * zoom);
+                            gc.stroke();
+                            if (showEdgeLabels) {
+                                String lbl = trimLabel(safe(col.logicType), 12);
+                                gc.setFill(Color.web("#263238").deriveColor(0, 1, 1, edgeAlpha));
+                                gc.fillText(lbl, (fromPos[0] * zoom + cxCol * zoom) / 2.0,
+                                        (fromPos[1] * zoom + cyCol * zoom) / 2.0);
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
-    private void drawNode(GraphicsContext gc, double x, double y, String label, double zoom, boolean highlight, Color color) {
+    private void drawNode(GraphicsContext gc, double x, double y, String label, double zoom, boolean highlight, Color color, double alpha) {
         double bw = 150 * zoom;
         double bh = 32 * zoom;
-        Color fill = highlight ? color.deriveColor(0, 1, 1.0, 0.14) : Color.web("#f6f9fb");
-        Color stroke = color != null ? color : Color.web("#1e88e5");
+        Color fill = highlight ? color.deriveColor(0, 1, 1.0, 0.14 * alpha) : Color.web("#f6f9fb").deriveColor(0, 1, 1, alpha);
+        Color stroke = (color != null ? color : Color.web("#1e88e5")).deriveColor(0, 1, 1, alpha);
         gc.setFill(fill);
         gc.fillRoundRect(x - bw / 2, y - bh / 2, bw, bh, 10 * zoom, 10 * zoom);
         gc.setStroke(stroke);
         gc.setLineWidth(highlight ? 1.6 * zoom : 1.0 * zoom);
         gc.strokeRoundRect(x - bw / 2, y - bh / 2, bw, bh, 10 * zoom, 10 * zoom);
-        gc.setFill(Color.web("#1f2933"));
+        gc.setFill(Color.web("#1f2933").deriveColor(0, 1, 1, alpha));
         gc.fillText(label, x - bw / 2 + 8 * zoom, y + 5 * zoom);
     }
 
@@ -370,6 +496,19 @@ public class AiOverlayController {
         String t = text.trim();
         if (t.length() <= max) return t;
         return t.substring(0, Math.max(0, max - 1)) + "…";
+    }
+
+    private boolean hasDependents(String sheet, String column) {
+        if (ragService.ruleGraph() == null || ragService.ruleGraph().sheets == null) return false;
+        for (var s : ragService.ruleGraph().sheets) {
+            if (s.columns == null) continue;
+            for (var c : s.columns) {
+                if (safe(c.sourceSheet).equals(sheet) && safe(c.sourceColumn).equals(column)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private String text(TextField field, String fallback) {
@@ -397,6 +536,69 @@ public class AiOverlayController {
         if (zoomLabel != null) {
             zoomLabel.setText(String.format("%.0f%%", zoomFactor * 100));
         }
+    }
+
+    private void setZoom(double value, Canvas targetCanvas, Slider source, Label extraLabel) {
+        double clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
+        zoomFactor = clamped;
+        updateZoomLabel();
+        if (extraLabel != null) {
+            extraLabel.setText(String.format("%.0f%%", zoomFactor * 100));
+        }
+        if (zoomSlider != null && zoomSlider != source && Math.abs(zoomSlider.getValue() - zoomFactor) > 0.001) {
+            zoomSlider.setValue(zoomFactor);
+        }
+        if (targetCanvas != null) {
+            renderGraph(targetCanvas);
+        } else {
+            drawGraph();
+        }
+    }
+
+    private double clampDim(double v) {
+        if (Double.isNaN(v) || Double.isInfinite(v)) return Math.min(MAX_CANVAS_DIM, Math.max(BASE_WIDTH, 800));
+        return Math.max(400, Math.min(MAX_CANVAS_DIM, v));
+    }
+
+    private String buildMermaid() {
+        StringBuilder sb = new StringBuilder("flowchart LR\n");
+        var graph = ragService.ruleGraph();
+        Set<String> allowed = visibleSheets.isEmpty() && graph != null && graph.sheets != null
+                ? graph.sheets.stream().map(s -> safe(s.name)).collect(Collectors.toSet())
+                : new HashSet<>(visibleSheets);
+        if (graph != null && graph.sheets != null) {
+            for (var s : graph.sheets) {
+                if (!allowed.contains(safe(s.name))) continue;
+                String sheetId = sanitizeId(s.name);
+                sb.append("  subgraph ").append(sheetId).append("[\"").append(s.name).append("\"]\n");
+                if (s.columns != null) {
+                    for (var c : s.columns) {
+                        if ((c.sourceSheet == null || c.sourceSheet.isBlank()) && !hasDependents(s.name, c.name)) continue;
+                        String colId = sheetId + "_" + sanitizeId(c.name);
+                        sb.append("    ").append(colId).append("[\"").append(c.name).append("\"]\n");
+                    }
+                }
+                sb.append("  end\n\n");
+            }
+            if (graph.sheets != null) {
+                for (var s : graph.sheets) {
+                    if (!allowed.contains(safe(s.name)) || s.columns == null) continue;
+                    for (var c : s.columns) {
+                        if (c.sourceSheet == null || c.sourceSheet.isBlank() || c.sourceColumn == null) continue;
+                        if (!allowed.contains(safe(c.sourceSheet))) continue;
+                        String fromId = sanitizeId(c.sourceSheet) + "_" + sanitizeId(c.sourceColumn);
+                        String toId = sanitizeId(s.name) + "_" + sanitizeId(c.name);
+                        String lbl = safe(c.logicType).isBlank() ? "derived" : safe(c.logicType);
+                        sb.append("  ").append(fromId).append(" -. ").append(lbl).append(" .-> ").append(toId).append("\n");
+                    }
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    private String sanitizeId(String v) {
+        return safe(v).replaceAll("[^A-Za-z0-9_]+", "_");
     }
 
     public record RuleCardRow(String sheet, String column, String dataType, String format, String logicType,
