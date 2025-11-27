@@ -68,8 +68,6 @@ public class MainController {
     @FXML
     private Tab aiTab;
     @FXML
-    private Tab logicGraphTab;
-    @FXML
     private Label statusLabel;
 
     private final ObservableList<Patient> patients = FXCollections.observableArrayList();
@@ -91,7 +89,6 @@ public class MainController {
     private JsonCsvController jsonCsvController;
     private MasterDataController masterDataController;
     private ScenarioBuilderController scenarioController;
-    private com.aac.kpi.controller.LogicGraphController logicGraphController;
     private com.aac.kpi.controller.AiOverlayController aiOverlayController;
 
     @FXML
@@ -163,12 +160,6 @@ public class MainController {
         Node jsonCsvRoot = jsonCsvLoader.load();
         jsonCsvController = jsonCsvLoader.getController();
         jsonCsvTab.setContent(jsonCsvRoot);
-
-        FXMLLoader logicGraphLoader = new FXMLLoader(getClass().getResource("/com/aac/kpi/LogicGraphView.fxml"));
-        Node logicGraphRoot = logicGraphLoader.load();
-        logicGraphController = logicGraphLoader.getController();
-        logicGraphController.init(patients, sessions, encounters, questionnaires, commonRows, scenarios);
-        logicGraphTab.setContent(logicGraphRoot);
 
         FXMLLoader aiLoader = new FXMLLoader(getClass().getResource("/com/aac/kpi/AiOverlayView.fxml"));
         Node aiRoot = aiLoader.load();

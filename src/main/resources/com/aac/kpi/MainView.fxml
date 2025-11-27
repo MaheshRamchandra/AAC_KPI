@@ -37,7 +37,6 @@
                 <Tab fx:id="jsonTab" text="KPI JSON" closable="false" />
                 <Tab fx:id="jsonCsvTab" text="JSON → CSV" closable="false" />
                 <Tab fx:id="aiTab" text="AI Overlay" closable="false" />
-                <Tab fx:id="logicGraphTab" text="Logic Graph" closable="false" />
                 <Tab fx:id="userGuideTab" text="User Guide" closable="false" />
                 <Tab fx:id="masterDataTab" text="Master Data" closable="false" />
             </tabs>

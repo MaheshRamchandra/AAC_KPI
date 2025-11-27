@@ -36,26 +36,33 @@
     function ensureMind() {
         if (mind) return mind;
         if (!MindElixirLib) {
-            showStatus('MindElixir not loaded; using fallback tree view.');
+            showStatus('MindElixir not loaded; showing fallback tree.');
             return null;
         }
-        mind = new MindElixirLib({
-            el: '#map',
-            direction: MindElixir.LEFT_RIGHT,
-            draggable: true,
-            contextMenu: false,
-            toolBar: false,
-            keypress: false,
-            allowUndo: false,
-            allowDrag: true,
-        });
-        mind.bus.addListener('selectNode', node => {
-            if (node && window.javaBridge && window.javaBridge.onNodeClick) {
-                window.javaBridge.onNodeClick(node.id);
-            }
-        });
-        showStatus('');
-        return mind;
+        try {
+            const direction = (MindElixirLib.SIDE || MindElixirLib.RIGHT || MindElixirLib.LEFT || 1);
+            mind = new MindElixirLib({
+                el: '#map',
+                direction,
+                draggable: true,
+                contextMenu: false,
+                toolBar: false,
+                keypress: false,
+                allowUndo: false,
+                allowDrag: true,
+            });
+            mind.bus.addListener('selectNode', node => {
+                if (node && window.javaBridge && window.javaBridge.onNodeClick) {
+                    window.javaBridge.onNodeClick(node.id);
+                }
+            });
+            showStatus('');
+            return mind;
+        } catch (err) {
+            console.error(err);
+            showStatus('Mind map engine failed; showing fallback tree.');
+            return null;
+        }
     }
 
     function buildTree(data) {
@@ -108,8 +115,6 @@
 
     function updateGraph(json) {
         showStatus('');
-        const m = ensureMind();
-        if (!m) return;
         if (typeof json === 'string') {
             try { json = JSON.parse(json); } catch (e) { console.error(e); showStatus('Invalid graph JSON'); }
         }
@@ -120,14 +125,12 @@
             return;
         }
         const tree = buildTree(graphData);
-        if (!MindElixirLib) {
-            renderFallback(tree.root);
-            return;
-        }
+        const m = ensureMind();
+        if (!m) { renderFallback(tree.root); return; }
         try {
             m.init({
                 nodeData: tree.root,
-                direction: MindElixir.LEFT_RIGHT
+                direction: m.direction || (MindElixirLib.SIDE || MindElixirLib.RIGHT || MindElixirLib.LEFT || 1)
             });
             m.expandAll();
         } catch (e) {
