@@ -39,6 +39,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MainController {
     @FXML
@@ -362,6 +363,44 @@ public class MainController {
         }
     }
 
+    @FXML
+    private void onRunQualityCheck() {
+        StringBuilder report = new StringBuilder();
+        int missingPatients = (int) patients.stream().filter(p -> isBlank(p.getPatientId())).count();
+        int dupPatients = patients.stream()
+                .map(Patient::getPatientId)
+                .filter(s -> !isBlank(s))
+                .collect(Collectors.groupingBy(s -> s, Collectors.counting()))
+                .values().stream().mapToInt(c -> c > 1 ? 1 : 0).sum();
+
+        int missingSessions = (int) sessions.stream().filter(s -> isBlank(s.getCompositionId())).count();
+        int missingSessionDates = (int) sessions.stream()
+                .filter(s -> isBlank(s.getEventSessionStartDate1()) || isBlank(s.getEventSessionEndDate1()))
+                .count();
+
+        int missingCommonPatient = (int) commonRows.stream().filter(c -> isBlank(c.getPatientReference())).count();
+        int missingCommonEvents = (int) commonRows.stream().filter(c -> isBlank(c.getAttendedEventReferences())).count();
+
+        if (missingPatients > 0 || dupPatients > 0 || missingSessions > 0 || missingSessionDates > 0
+                || missingCommonPatient > 0 || missingCommonEvents > 0) {
+            report.append("Quality findings:\n");
+            if (missingPatients > 0) report.append("• Patient Master: ").append(missingPatients).append(" rows missing patient_id\n");
+            if (dupPatients > 0) report.append("• Patient Master: duplicate patient_id values detected\n");
+            if (missingSessions > 0) report.append("• Event Session: ").append(missingSessions).append(" rows missing composition_id\n");
+            if (missingSessionDates > 0) report.append("• Event Session: ").append(missingSessionDates).append(" rows missing start/end dates\n");
+            if (missingCommonPatient > 0) report.append("• Common: ").append(missingCommonPatient).append(" rows missing patient_reference\n");
+            if (missingCommonEvents > 0) report.append("• Common: ").append(missingCommonEvents).append(" rows missing attended_event_references\n");
+        } else {
+            report.append("No critical issues detected in Patient/Event/Common sheets.");
+        }
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION, report.toString(), ButtonType.OK);
+        alert.setTitle("Data Quality Check");
+        alert.setHeaderText("Quick data quality summary");
+        alert.showAndWait();
+        statusLabel.setText("Quality check completed.");
+    }
+
     private java.util.List<com.aac.kpi.model.CommonRow> commonControllerItems() {
         // ask controller for its current items; if controller ever null, return empty
         try {
@@ -399,6 +438,10 @@ public class MainController {
                 "Generated %d patients | %d sessions | %d practitioners | %d encounters | %d questionnaires%s | Last export: ",
                 patients.size(), sessions.size(), practitioners.size(), encounters.size(), questionnaires.size(),
                 dirty));
+    }
+
+    private boolean isBlank(String v) {
+        return v == null || v.trim().isEmpty();
     }
 
     private void clearAllSheets() {

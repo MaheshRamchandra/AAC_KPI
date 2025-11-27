@@ -21,6 +21,11 @@
                         <MenuItem text="KPI Settings" onAction="#onOpenKpiSettings" />
                     </items>
                 </Menu>
+                <Menu text="Tools">
+                    <items>
+                        <MenuItem text="Run Data Quality Check" onAction="#onRunQualityCheck"/>
+                    </items>
+                </Menu>
             </menus>
         </MenuBar>
     </top>
