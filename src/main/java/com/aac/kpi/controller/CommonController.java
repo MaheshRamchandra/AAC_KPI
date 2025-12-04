@@ -77,11 +77,14 @@ public class CommonController {
     }
 
     @FXML private void onBuild() {
+        Optional<ReportingFieldsDialog.ReportingFields> reporting = promptForReportingFields();
+        if (reporting.isEmpty()) return;
         Optional<CfsSelection> selection = promptForCfsSelection();
         Optional<SocialRiskSelection> riskSelection = promptForSocialRiskSelection();
         Optional<EventReportSelection> eventSelection = promptForEventReportSelection();
         AppState.setEventReportLabel(eventSelection.map(EventReportSelection::getValue).orElse(""));
         List<CommonRow> built = CommonBuilderService.build(patients, sessions, encounters, questionnaires, practitioners);
+        reporting.ifPresent(fields -> applyReportingFields(built, fields));
         selection.ifPresent(sel -> applyCfsSelection(built, sel));
         riskSelection.ifPresent(sel -> applySocialRiskSelection(built, sel));
         commons.setAll(built);
@@ -112,6 +115,8 @@ public class CommonController {
 
     @FXML private void onExport() {
         try {
+            Optional<ReportingFieldsDialog.ReportingFields> reporting = promptForReportingFields();
+            if (reporting.isEmpty()) return;
             java.io.File dest = com.aac.kpi.service.AppState.getCurrentExcelFile();
             if (dest == null) {
                 FileChooser fc = new FileChooser();
@@ -125,6 +130,7 @@ public class CommonController {
                 List<CommonRow> built = CommonBuilderService.build(patients, sessions, encounters, questionnaires, practitioners);
                 commons.setAll(built);
             }
+            reporting.ifPresent(fields -> applyReportingFields(commons, fields));
             // Prompt for number of practitioners for volunteer_attendance_report
             int total = practitioners != null ? practitioners.size() : 0;
             if (total > 0) {
@@ -160,6 +166,22 @@ public class CommonController {
             statusLabel.setText(String.format("Common rows: %d | Patients %d | Sessions %d | Encounters %d | Questionnaires %d",
                     commons.size(), patients.size(), sessions.size(), encounters.size(), questionnaires.size()));
         }
+    }
+
+    private Optional<ReportingFieldsDialog.ReportingFields> promptForReportingFields() {
+        return ReportingFieldsDialog.prompt(AppState.getReportingMonthOverride(), AppState.getReportDateOverride());
+    }
+
+    private void applyReportingFields(List<CommonRow> rows, ReportingFieldsDialog.ReportingFields fields) {
+        if (rows == null || fields == null) return;
+        for (CommonRow row : rows) {
+            if (row == null) continue;
+            row.setReportingMonth(fields.reportingMonth());
+            row.setLastUpdated(fields.reportDate());
+        }
+        AppState.setReportingMonthOverride(fields.reportingMonth());
+        AppState.setReportDateOverride(fields.reportDate());
+        refreshTable();
     }
 
     private void showAlert(String msg) { Alert a = new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK); a.setHeaderText(null); a.showAndWait(); }

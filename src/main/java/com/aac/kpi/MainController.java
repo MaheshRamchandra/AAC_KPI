@@ -5,6 +5,7 @@ import com.aac.kpi.controller.JsonExportController;
 import com.aac.kpi.controller.JsonCsvController;
 import com.aac.kpi.controller.MasterDataController;
 import com.aac.kpi.controller.PatientMasterController;
+import com.aac.kpi.controller.ReportingFieldsDialog;
 import com.aac.kpi.controller.ScenarioBuilderController;
 import com.aac.kpi.model.CommonRow;
 import com.aac.kpi.model.EventSession;
@@ -228,6 +229,9 @@ public class MainController {
             File chosen = fc.showSaveDialog(tabPane.getScene().getWindow());
             if (chosen == null)
                 return;
+            var reporting = promptReportingFields();
+            if (reporting.isEmpty())
+                return;
             // Prompt for volunteer_attendance_report practitioner count
             int total = practitioners != null ? practitioners.size() : 0;
             if (total > 0) {
@@ -256,6 +260,7 @@ public class MainController {
             }
             java.util.List<com.aac.kpi.model.CommonRow> commons = (questionnaireController != null
                     && commonController != null) ? commonControllerItems() : java.util.List.of();
+            reporting.ifPresent(fields -> applyReportingFields(commons, fields));
             File file = ExcelWriter.saveToExcel(patients, sessions, practitioners, encounters, questionnaires, commons,
                     chosen);
             AppState.setCurrentExcelFile(file);
@@ -319,6 +324,9 @@ public class MainController {
                 onExportExcelAs();
                 return;
             }
+            var reporting = promptReportingFields();
+            if (reporting.isEmpty())
+                return;
             // Prompt for volunteer_attendance_report practitioner count
             int total = practitioners != null ? practitioners.size() : 0;
             if (total > 0) {
@@ -347,6 +355,7 @@ public class MainController {
             }
             java.util.List<com.aac.kpi.model.CommonRow> commons = (questionnaireController != null
                     && commonController != null) ? commonControllerItems() : java.util.List.of();
+            reporting.ifPresent(fields -> applyReportingFields(commons, fields));
             File file = ExcelWriter.saveToExcel(patients, sessions, practitioners, encounters, questionnaires, commons,
                     dest);
             AppState.setDirty(false);
@@ -375,6 +384,22 @@ public class MainController {
         } catch (Exception ignored) {
         }
         return java.util.List.of();
+    }
+
+    private java.util.Optional<ReportingFieldsDialog.ReportingFields> promptReportingFields() {
+        return ReportingFieldsDialog.prompt(AppState.getReportingMonthOverride(), AppState.getReportDateOverride());
+    }
+
+    private void applyReportingFields(List<CommonRow> rows, ReportingFieldsDialog.ReportingFields fields) {
+        if (rows == null || fields == null) return;
+        for (CommonRow row : rows) {
+            if (row == null) continue;
+            row.setReportingMonth(fields.reportingMonth());
+            row.setLastUpdated(fields.reportDate());
+        }
+        AppState.setReportingMonthOverride(fields.reportingMonth());
+        AppState.setReportDateOverride(fields.reportDate());
+        if (commonController != null) commonController.refreshTable();
     }
 
     @FXML

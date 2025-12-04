@@ -448,9 +448,9 @@ public class ExcelWriter {
             int i = 0;
             row.createCell(i++).setCellValue(nvl(c.getCompositionId()));
             row.createCell(i++).setCellValue(c.getVersionId());
-            row.createCell(i++).setCellValue(toIsoOffset(nvl(c.getLastUpdated())));
+            row.createCell(i++).setCellValue(toIsoOffset(reportDateWithOverride(nvl(c.getLastUpdated()))));
             row.createCell(i++).setCellValue(nvl(c.getMetaCode()));
-            row.createCell(i++).setCellValue(nvl(c.getReportingMonth()));
+            row.createCell(i++).setCellValue(reportingMonthWithOverride(nvl(c.getReportingMonth())));
             row.createCell(i++).setCellValue(c.getTotalOperatingDays());
             row.createCell(i++).setCellValue(c.getTotalClients());
             row.createCell(i++).setCellValue(nvl(c.getStatus()));
@@ -611,8 +611,7 @@ public class ExcelWriter {
         List<String> practitionerIds = practitioners.stream()
                 .map(com.aac.kpi.model.Practitioner::getPractitionerId)
                 .filter(Objects::nonNull).toList();
-        CellStyle aacDateTimeStyle = sheet.getWorkbook().createCellStyle();
-        aacDateTimeStyle.setDataFormat(sheet.getWorkbook().createDataFormat().getFormat("yyyy-MM-dd HH:mm:ss"));
+        DateTimeFormatter monthFmt = DateTimeFormatter.ofPattern("yyyy-MM");
         int sno = 1;
         for (MasterDataService.AacCenter center : masterData.getAacCenters()) {
             String aac = center.aacCenterId();
@@ -624,11 +623,11 @@ public class ExcelWriter {
             row.createCell(i++).setCellValue(nowIsoOffset("+08:00"));
             row.createCell(i++).setCellValue(RandomDataUtil.uuid32().substring(0, 20));
             LocalDateTime dt = latestByAac.getOrDefault(aac, LocalDateTime.now());
-            row.createCell(i++).setCellValue(dt.format(DateTimeFormatter.ofPattern("yyyy-MM")));
+            row.createCell(i++).setCellValue(reportingMonthWithOverride(dt.format(monthFmt)));
             row.createCell(i++).setCellValue(240);
             row.createCell(i++).setCellValue(clientsByAac.getOrDefault(aac, 0L).intValue());
             row.createCell(i++).setCellValue("final");
-            row.createCell(i++).setCellValue(nowIsoOffset("+08:00"));
+            row.createCell(i++).setCellValue(toIsoOffset(reportDateWithOverride(nowIsoOffset("+08:00"))));
             row.createCell(i++).setCellValue(aac);
             row.createCell(i++).setCellValue(center.aacCenterName());
             List<String> references = selectPractitionerSubset(
@@ -673,11 +672,11 @@ public class ExcelWriter {
             row.createCell(i++).setCellValue(c.getVersionId());
             row.createCell(i++).setCellValue(nowIsoOffset("+08:00"));
             row.createCell(i++).setCellValue(nvl(c.getMetaCode()));
-            row.createCell(i++).setCellValue(nvl(c.getReportingMonth()));
+            row.createCell(i++).setCellValue(reportingMonthWithOverride(nvl(c.getReportingMonth())));
             row.createCell(i++).setCellValue(nvl(c.getStatus()));
             // 'date' column: ISO 8601 with +08:00 (text), e.g. 2025-05-09T06:19:37+08:00
-            String last = nvl(c.getLastUpdated());
-            if (last.isBlank()) last = nowStamp();
+            String last = reportDateWithOverride(nvl(c.getLastUpdated()));
+            if (last.isBlank()) last = reportDateWithOverride(nowStamp());
             row.createCell(i++).setCellValue(toIsoOffset(last));
             row.createCell(i++).setCellValue(nvl(c.getAuthorValue()));
             row.createCell(i++).setCellValue(nvl(c.getAuthorDisplay()));
@@ -931,10 +930,11 @@ public class ExcelWriter {
                 row.createCell(i++).setCellValue(1);
                 row.createCell(i++).setCellValue(nowIsoOffset("+08:00"));
                 row.createCell(i++).setCellValue(RandomDataUtil.uuid32().substring(0, 20));
-                row.createCell(i++).setCellValue(earliest != null ? earliest.format(monthFmt) : "");
+                row.createCell(i++).setCellValue(reportingMonthWithOverride(earliest != null ? earliest.format(monthFmt) : ""));
                 row.createCell(i++).setCellValue("completed");
                 {
                     String dtStr = earliest != null ? earliest.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "";
+                    dtStr = reportDateWithOverride(dtStr);
                     row.createCell(i++).setCellValue(dtStr.isEmpty() ? "" : toIsoOffset(dtStr));
                 }
                 row.createCell(i++).setCellValue(eventAuthorValue);
@@ -1027,9 +1027,9 @@ public class ExcelWriter {
         row.createCell(i++).setCellValue(1);
         row.createCell(i++).setCellValue(nowIsoOffset("+08:00"));
         row.createCell(i++).setCellValue(RandomDataUtil.uuid32().substring(0, 20));
-        row.createCell(i++).setCellValue(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM")));
+        row.createCell(i++).setCellValue(reportingMonthWithOverride(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))));
         row.createCell(i++).setCellValue("final");
-        row.createCell(i++).setCellValue(nowIsoOffset("+08:00"));
+        row.createCell(i++).setCellValue(toIsoOffset(reportDateWithOverride(nowIsoOffset("+08:00"))));
 
         String aac = center != null ? center.aacCenterId() : (patients.isEmpty() ? "AAC" : nvl(patients.get(0).getAac()));
         String centerName = center != null ? center.aacCenterName() : "Active Ageing Centre";
@@ -1215,6 +1215,7 @@ public class ExcelWriter {
                 latestByAac.merge(aac, dt, (a, b) -> a.isAfter(b) ? a : b);
         }
 
+        DateTimeFormatter monthFmt = DateTimeFormatter.ofPattern("yyyy-MM");
         int r = 1;
         CellStyle dateTimeStyle = sheet.getWorkbook().createCellStyle();
         dateTimeStyle.setDataFormat(sheet.getWorkbook().createDataFormat().getFormat("yyyy-MM-dd HH:mm:ss"));
@@ -1228,11 +1229,11 @@ public class ExcelWriter {
             row.createCell(i++).setCellValue(nowIsoOffset("+08:00"));
             row.createCell(i++).setCellValue(RandomDataUtil.uuid32().substring(0, 20));
             LocalDateTime ldt = latestByAac.getOrDefault(aac, LocalDateTime.now());
-            row.createCell(i++).setCellValue(ldt.format(DateTimeFormatter.ofPattern("yyyy-MM")));
+            row.createCell(i++).setCellValue(reportingMonthWithOverride(ldt.format(monthFmt)));
             row.createCell(i++).setCellValue(240);
             row.createCell(i++).setCellValue(e.getValue().intValue());
             row.createCell(i++).setCellValue("final");
-            setDateTimeCell(row, i++, nowStamp(), dateTimeStyle);
+            setDateTimeCell(row, i++, reportDateWithOverride(nowStamp()), dateTimeStyle);
             row.createCell(i++).setCellValue(aac);
             row.createCell(i++).setCellValue("Active Ageing Centre " + aac.replaceAll("[^0-9]", ""));
             row.createCell(i).setCellValue(String.join("##", practitioners.stream()
@@ -1260,9 +1261,9 @@ public class ExcelWriter {
         row.createCell(i++).setCellValue(1);
         row.createCell(i++).setCellValue(nowIsoOffset("+08:00"));
         row.createCell(i++).setCellValue(RandomDataUtil.uuid32().substring(0, 20));
-        row.createCell(i++).setCellValue(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM")));
+        row.createCell(i++).setCellValue(reportingMonthWithOverride(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))));
         row.createCell(i++).setCellValue("final");
-        setDateTimeCell(row, i++, nowStamp(), dateTimeStyle);
+        setDateTimeCell(row, i++, reportDateWithOverride(nowStamp()), dateTimeStyle);
         String aac = patients.isEmpty() ? "AAC" : nvl(patients.get(0).getAac());
         row.createCell(i++).setCellValue(aac);
         row.createCell(i++).setCellValue("Active Ageing Centre " + aac.replaceAll("[^0-9]", ""));
@@ -1297,9 +1298,9 @@ public class ExcelWriter {
             row.createCell(i++).setCellValue(RandomDataUtil.uuid32().substring(0, 20));
             LocalDateTime dt = parseDateTime(s.getEventSessionStartDate1());
             row.createCell(i++).setCellValue(
-                    (dt != null ? dt : LocalDateTime.now()).format(DateTimeFormatter.ofPattern("yyyy-MM")));
+                    reportingMonthWithOverride((dt != null ? dt : LocalDateTime.now()).format(DateTimeFormatter.ofPattern("yyyy-MM"))));
             row.createCell(i++).setCellValue("final");
-            setDateTimeCell(row, i++, nowStamp(), dateTimeStyle);
+            setDateTimeCell(row, i++, reportDateWithOverride(nowStamp()), dateTimeStyle);
             Patient p = patientIndex.get(s.getEventSessionPatientReferences1());
             String aac = p != null ? nvl(p.getAac()) : "AAC";
             row.createCell(i++).setCellValue(aac);
@@ -1463,6 +1464,20 @@ public class ExcelWriter {
             }
             cell.setCellStyle(clone);
         }
+    }
+
+    private static String reportingMonthWithOverride(String fallback) {
+        String override = AppState.getReportingMonthOverride();
+        if (override != null && !override.isBlank())
+            return override.trim();
+        return nvl(fallback);
+    }
+
+    private static String reportDateWithOverride(String fallback) {
+        String override = AppState.getReportDateOverride();
+        if (override != null && !override.isBlank())
+            return override.trim();
+        return nvl(fallback);
     }
 
     private static String nvl(String s) {

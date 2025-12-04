@@ -18,6 +18,8 @@ public final class AppState {
     private static volatile int volunteersPerCenter = 3;
     private static volatile int aacCenterCount = 20;
     private static volatile com.aac.kpi.model.RulesConfig rulesConfig = com.aac.kpi.model.RulesConfig.defaults();
+    private static volatile String reportingMonthOverride = "";
+    private static volatile String reportDateOverride = "";
 
     private static final Set<String> highlightedPatientIds = new LinkedHashSet<>();
     private static final Set<String> highlightedEventSessionCompositionIds = new LinkedHashSet<>();
@@ -57,6 +59,16 @@ public final class AppState {
         // keep within a reasonable range to avoid accidental huge sheets
         if (value <= 0) value = 10;
         aacCenterCount = Math.min(value, 1000);
+    }
+
+    public static String getReportingMonthOverride() { return reportingMonthOverride; }
+    public static void setReportingMonthOverride(String value) {
+        reportingMonthOverride = value == null ? "" : value.trim();
+    }
+
+    public static String getReportDateOverride() { return reportDateOverride; }
+    public static void setReportDateOverride(String value) {
+        reportDateOverride = value == null ? "" : value.trim();
     }
 
     public static Set<String> getHighlightedPatientIds() { return Collections.unmodifiableSet(highlightedPatientIds); }
