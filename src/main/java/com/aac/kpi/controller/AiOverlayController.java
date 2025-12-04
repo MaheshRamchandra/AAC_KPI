@@ -79,6 +79,7 @@ public class AiOverlayController {
     @FXML private TextField patternField;
     @FXML private TextField transformField;
     @FXML private Canvas dependencyCanvas;
+    @FXML private TextArea lineageArea;
     @FXML private CheckBox showColumnsToggle;
     @FXML private CheckBox showEdgeLabelsToggle;
     @FXML private CheckBox highlightSelectedToggle;
@@ -331,6 +332,7 @@ public class AiOverlayController {
         if (proposalArea != null) {
             proposalArea.setText(row.summary());
         }
+        updateLineage(row);
         onRun();
     }
 
@@ -555,6 +557,7 @@ public class AiOverlayController {
         } else {
             lastGraphBounds = new Rect(minX, minY, maxX - minX, maxY - minY);
         }
+        syncCanvasSize(canvas);
         if (dependencyCanvas != null) {
             dependencyCanvas.setOnMouseMoved(evt -> {
                 NodeInfo nearest = findNearest(nodePos, evt.getX(), evt.getY());
@@ -562,6 +565,44 @@ public class AiOverlayController {
                     statusLabel.setText((nearest.type.equals("sheet") ? "Sheet: " : "Column: ") + nearest.label);
                 }
             });
+        }
+    }
+
+    private void updateLineage(RuleCardRow row) {
+        if (lineageArea == null || row == null) return;
+        RagRuleService.RuleCard card = findCard(row.sheet(), row.column());
+        StringBuilder sb = new StringBuilder();
+        sb.append(row.sheet()).append(".").append(row.column()).append("\n");
+        sb.append("logic: ").append(row.logicType()).append(" / ").append(row.format()).append("\n");
+        if (!safe(row.sourceSheet()).isBlank()) {
+            sb.append("source: ").append(row.sourceSheet()).append(".").append(safe(row.sourceColumn())).append("\n");
+        }
+        if (!safe(row.transform()).isBlank()) {
+            sb.append("transform: ").append(row.transform()).append("\n");
+        }
+        if (!safe(row.pattern()).isBlank()) {
+            sb.append("pattern: ").append(row.pattern()).append("\n");
+        }
+        if (card != null) {
+            if (!card.dependencies().isEmpty()) {
+                sb.append("dependencies:\n");
+                card.dependencies().forEach(d -> sb.append(" - ").append(d).append("\n"));
+            }
+            if (!card.allowedOverrides().isEmpty()) {
+                sb.append("overrides:\n");
+                card.allowedOverrides().forEach(o -> sb.append(" - ").append(o).append("\n"));
+            }
+        }
+        lineageArea.setText(sb.toString().trim());
+    }
+
+    private RagRuleService.RuleCard findCard(String sheet, String column) {
+        try {
+            return ragService.ruleCards(sheet, currentScenario()).stream()
+                    .filter(c -> safe(c.column()).equals(safe(column)))
+                    .findFirst().orElse(null);
+        } catch (Exception ex) {
+            return null;
         }
     }
 
@@ -649,6 +690,26 @@ public class AiOverlayController {
             this.h = h;
         }
     }
+
+    private void syncCanvasSize(Canvas canvas) {
+        if (canvas == null) return;
+        double pad = 120;
+        double rawW = lastGraphBounds.x + lastGraphBounds.w + pad;
+        double rawH = lastGraphBounds.y + lastGraphBounds.h + pad;
+        if (Double.isNaN(rawW) || Double.isInfinite(rawW)) rawW = BASE_WIDTH;
+        if (Double.isNaN(rawH) || Double.isInfinite(rawH)) rawH = BASE_HEIGHT;
+        double neededW = clampDim(Math.max(canvas.getWidth(), rawW));
+        double neededH = clampDim(Math.max(canvas.getHeight(), rawH));
+        if (Math.abs(neededW - canvas.getWidth()) > 1 || Math.abs(neededH - canvas.getHeight()) > 1) {
+            canvas.setWidth(neededW);
+            canvas.setHeight(neededH);
+        }
+        if (canvas.getParent() instanceof StackPane pane) {
+            pane.setMinSize(neededW, neededH);
+            pane.setPrefSize(neededW, neededH);
+        }
+    }
+
     private String text(TextField field, String fallback) {
         if (field == null || field.getText() == null || field.getText().isBlank()) return fallback;
         return field.getText().trim();
@@ -687,11 +748,14 @@ public class AiOverlayController {
             zoomSlider.setValue(zoomFactor);
         }
         debounceDraw.playFromStart();
+        if (graphScroll != null) {
+            graphScroll.setPannable(true);
+        }
     }
 
     private double clampDim(double v) {
         if (Double.isNaN(v) || Double.isInfinite(v)) return Math.min(MAX_CANVAS_DIM, Math.max(BASE_WIDTH, 800));
-        return Math.max(400, Math.min(MAX_CANVAS_DIM, v));
+        return Math.max(200, Math.min(MAX_CANVAS_DIM, v));
     }
 
     private String buildMermaid() {

@@ -9,11 +9,11 @@
             <menus>
                 <Menu text="File">
                     <items>
-                        <MenuItem text="Upload Excel" onAction="#onUploadExcel" />
-                        <MenuItem text="Save" onAction="#onSaveExcel" />
-                        <MenuItem text="Save As…" onAction="#onExportExcelAs" />
+                        <MenuItem text="Upload Excel" onAction="#onUploadExcel" accelerator="Shortcut+O"/>
+                        <MenuItem text="Save" onAction="#onSaveExcel" accelerator="Shortcut+S"/>
+                        <MenuItem text="Save As…" onAction="#onExportExcelAs" accelerator="Shortcut+Shift+S"/>
                         <SeparatorMenuItem />
-                        <MenuItem text="Exit" onAction="#onExit" />
+                        <MenuItem text="Exit" onAction="#onExit" accelerator="Shortcut+Q"/>
                     </items>
                 </Menu>
                 <Menu text="Settings">
@@ -23,8 +23,8 @@
                 </Menu>
                 <Menu text="Tools">
                     <items>
-                        <MenuItem text="Run Data Quality Check" onAction="#onRunQualityCheck"/>
-                        <MenuItem text="View Validation Details" onAction="#onShowValidationDetails"/>
+                        <MenuItem text="Run Data Quality Check" onAction="#onRunQualityCheck" accelerator="Shortcut+Alt+Q"/>
+                        <MenuItem text="View Validation Details" onAction="#onShowValidationDetails" accelerator="Shortcut+Alt+V"/>
                     </items>
                 </Menu>
             </menus>

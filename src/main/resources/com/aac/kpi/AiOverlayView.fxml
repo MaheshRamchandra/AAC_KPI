@@ -95,6 +95,8 @@
                                 <ListView fx:id="previewList" prefHeight="110"/>
                                 <Label text="Validations"/>
                                 <TextArea fx:id="validationsArea" prefRowCount="2" wrapText="true"/>
+                                <Label text="Data Lineage"/>
+                                <TextArea fx:id="lineageArea" prefRowCount="3" wrapText="true"/>
                             </children>
                         </VBox>
                     </items>
@@ -153,7 +155,7 @@ Scenarios: selecting a scenario overlays its overrides for explanation and previ
                                 <ListView fx:id="logicFilterList" prefHeight="140" prefWidth="160"/>
                             </VBox>
                         </HBox>
-                        <ScrollPane fx:id="graphScroll" fitToWidth="true" fitToHeight="true" prefViewportHeight="320">
+                        <ScrollPane fx:id="graphScroll" fitToWidth="false" fitToHeight="false" prefViewportHeight="320">
                             <content>
                                 <StackPane>
                                     <Canvas fx:id="dependencyCanvas" width="1400" height="900"/>
