@@ -76,6 +76,7 @@ public class ExcelWriter {
             writeCombinedCommonSheet(wb, patients, sessions, practitioners, encounters, questionnaires, commonRows,
                     masterData, highlightStyle);
             writeEventSessionSheet(wb, sessions, highlightStyle);
+            writeEventSessionsNricSheet(wb, patients, sessions);
             writePatientSheet(wb, patients, sessions, highlightStyle);
             writePractitionerSheet(wb, practitioners, masterData, highlightStyle);
             if (encounters != null && !encounters.isEmpty())
@@ -1239,6 +1240,58 @@ public class ExcelWriter {
             row.createCell(i).setCellValue(String.join("##", practitioners.stream()
                     .map(com.aac.kpi.model.Practitioner::getPractitionerId)
                     .filter(Objects::nonNull).toList()));
+        }
+        autoSize(sheet, headers.length);
+    }
+
+    private static void writeEventSessionsNricSheet(XSSFWorkbook wb, List<Patient> patients, List<EventSession> sessions) {
+        XSSFSheet sheet = wb.createSheet("Event Sessions NRIC");
+        String[] headers = new String[] {
+                "patient_identifier_value",
+                "number_of_attended_indicator",
+                "registration_id1",
+                "registration_value1",
+                "registration_id2",
+                "registration_value2",
+                "registration_id3",
+                "registration_value3"
+        };
+        createHeaderRow(sheet, headers);
+
+        // Count attended sessions per patient reference (sanitized)
+        Map<String, Integer> attendedCounts = new HashMap<>();
+        for (EventSession session : sessions) {
+            if (session == null || !session.isAttendedIndicator())
+                continue;
+            String raw = nvl(session.getEventSessionPatientReferences1());
+            if (raw.isBlank())
+                continue;
+            for (String part : raw.split("##")) {
+                String clean = StringUtils.sanitizeAlphaNum(nvl(part));
+                if (clean.isBlank())
+                    continue;
+                attendedCounts.merge(clean, 1, Integer::sum);
+            }
+        }
+
+        int r = 1;
+        for (Patient p : patients) {
+            Row row = sheet.createRow(r++);
+            int c = 0;
+            String identifier = nvl(p.getPatientIdentifierValue());
+            if (identifier.isBlank())
+                identifier = nvl(p.getPatientId());
+            String idKey = StringUtils.sanitizeAlphaNum(identifier);
+            int count = attendedCounts.getOrDefault(idKey, 0);
+
+            row.createCell(c++).setCellValue(identifier);
+            row.createCell(c++).setCellValue(count);
+            row.createCell(c++).setCellValue(RandomDataUtil.uuid32().toUpperCase());
+            row.createCell(c++).setCellValue("TRUE");
+            row.createCell(c++).setCellValue(RandomDataUtil.uuid32().toUpperCase());
+            row.createCell(c++).setCellValue("TRUE");
+            row.createCell(c++).setCellValue(RandomDataUtil.uuid32().toUpperCase());
+            row.createCell(c).setCellValue("TRUE");
         }
         autoSize(sheet, headers.length);
     }
