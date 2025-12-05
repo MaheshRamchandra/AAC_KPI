@@ -20,6 +20,11 @@ public final class AppState {
     private static volatile com.aac.kpi.model.RulesConfig rulesConfig = com.aac.kpi.model.RulesConfig.defaults();
     private static volatile String reportingMonthOverride = "";
     private static volatile String reportDateOverride = "";
+    private static volatile int robustRegistrationCount = 2;
+    private static volatile int frailRegistrationCount = 1;
+    private static volatile int buddingRegistrationCount = 6;
+    private static volatile int befriendingRegistrationCount = 12;
+    private static volatile String registrationOverrideType = "";
 
     private static final Set<String> highlightedPatientIds = new LinkedHashSet<>();
     private static final Set<String> highlightedEventSessionCompositionIds = new LinkedHashSet<>();
@@ -69,6 +74,23 @@ public final class AppState {
     public static String getReportDateOverride() { return reportDateOverride; }
     public static void setReportDateOverride(String value) {
         reportDateOverride = value == null ? "" : value.trim();
+    }
+
+    public static int getRobustRegistrationCount() { return robustRegistrationCount; }
+    public static void setRobustRegistrationCount(int value) { robustRegistrationCount = Math.max(0, value); }
+
+    public static int getFrailRegistrationCount() { return frailRegistrationCount; }
+    public static void setFrailRegistrationCount(int value) { frailRegistrationCount = Math.max(0, value); }
+
+    public static int getBuddingRegistrationCount() { return buddingRegistrationCount; }
+    public static void setBuddingRegistrationCount(int value) { buddingRegistrationCount = Math.max(0, value); }
+
+    public static int getBefriendingRegistrationCount() { return befriendingRegistrationCount; }
+    public static void setBefriendingRegistrationCount(int value) { befriendingRegistrationCount = Math.max(0, value); }
+
+    public static String getRegistrationOverrideType() { return registrationOverrideType; }
+    public static void setRegistrationOverrideType(String value) {
+        registrationOverrideType = value == null ? "" : value.trim();
     }
 
     public static Set<String> getHighlightedPatientIds() { return Collections.unmodifiableSet(highlightedPatientIds); }

@@ -5,6 +5,7 @@ import com.aac.kpi.service.AppState;
 import com.aac.kpi.service.CommonBuilderService;
 import com.aac.kpi.service.ExcelReader;
 import com.aac.kpi.service.ExcelWriter;
+import com.aac.kpi.controller.KpiRegistrationDialog;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -77,12 +78,15 @@ public class CommonController {
     }
 
     @FXML private void onBuild() {
+        Optional<KpiRegistrationDialog.RegistrationSelection> regConfig = promptForRegistrationConfig();
+        if (regConfig.isEmpty()) return;
         Optional<ReportingFieldsDialog.ReportingFields> reporting = promptForReportingFields();
         if (reporting.isEmpty()) return;
         Optional<CfsSelection> selection = promptForCfsSelection();
         Optional<SocialRiskSelection> riskSelection = promptForSocialRiskSelection();
         Optional<EventReportSelection> eventSelection = promptForEventReportSelection();
         AppState.setEventReportLabel(eventSelection.map(EventReportSelection::getValue).orElse(""));
+        regConfig.ifPresent(this::applyRegistrationSelection);
         List<CommonRow> built = CommonBuilderService.build(patients, sessions, encounters, questionnaires, practitioners);
         reporting.ifPresent(fields -> applyReportingFields(built, fields));
         selection.ifPresent(sel -> applyCfsSelection(built, sel));
@@ -115,8 +119,11 @@ public class CommonController {
 
     @FXML private void onExport() {
         try {
-            Optional<ReportingFieldsDialog.ReportingFields> reporting = promptForReportingFields();
-            if (reporting.isEmpty()) return;
+        Optional<KpiRegistrationDialog.RegistrationSelection> regConfig = promptForRegistrationConfig();
+        if (regConfig.isEmpty()) return;
+        Optional<ReportingFieldsDialog.ReportingFields> reporting = promptForReportingFields();
+        if (reporting.isEmpty()) return;
+            regConfig.ifPresent(this::applyRegistrationSelection);
             java.io.File dest = com.aac.kpi.service.AppState.getCurrentExcelFile();
             if (dest == null) {
                 FileChooser fc = new FileChooser();
@@ -170,6 +177,25 @@ public class CommonController {
 
     private Optional<ReportingFieldsDialog.ReportingFields> promptForReportingFields() {
         return ReportingFieldsDialog.prompt(AppState.getReportingMonthOverride(), AppState.getReportDateOverride());
+    }
+
+    private Optional<KpiRegistrationDialog.RegistrationSelection> promptForRegistrationConfig() {
+        return KpiRegistrationDialog.prompt(
+                AppState.getRobustRegistrationCount(),
+                AppState.getFrailRegistrationCount(),
+                AppState.getBuddingRegistrationCount(),
+                AppState.getBefriendingRegistrationCount()
+        );
+    }
+
+    private void applyRegistrationSelection(KpiRegistrationDialog.RegistrationSelection sel) {
+        if (sel == null || sel.config() == null) return;
+        var cfg = sel.config();
+        AppState.setRobustRegistrationCount(cfg.robust());
+        AppState.setFrailRegistrationCount(cfg.frail());
+        AppState.setBuddingRegistrationCount(cfg.budding());
+        AppState.setBefriendingRegistrationCount(cfg.befriending());
+        AppState.setRegistrationOverrideType(sel.selectedType() == null ? "" : sel.selectedType());
     }
 
     private void applyReportingFields(List<CommonRow> rows, ReportingFieldsDialog.ReportingFields fields) {

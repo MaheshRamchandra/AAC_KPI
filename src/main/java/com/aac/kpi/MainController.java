@@ -3,6 +3,7 @@ package com.aac.kpi;
 import com.aac.kpi.controller.EventSessionController;
 import com.aac.kpi.controller.JsonExportController;
 import com.aac.kpi.controller.JsonCsvController;
+import com.aac.kpi.controller.KpiRegistrationDialog;
 import com.aac.kpi.controller.MasterDataController;
 import com.aac.kpi.controller.PatientMasterController;
 import com.aac.kpi.controller.ReportingFieldsDialog;
@@ -229,9 +230,13 @@ public class MainController {
             File chosen = fc.showSaveDialog(tabPane.getScene().getWindow());
             if (chosen == null)
                 return;
+            var regCfg = promptRegistrationConfig();
+            if (regCfg.isEmpty())
+                return;
             var reporting = promptReportingFields();
             if (reporting.isEmpty())
                 return;
+            regCfg.ifPresent(this::applyRegistrationConfig);
             // Prompt for volunteer_attendance_report practitioner count
             int total = practitioners != null ? practitioners.size() : 0;
             if (total > 0) {
@@ -261,6 +266,7 @@ public class MainController {
             java.util.List<com.aac.kpi.model.CommonRow> commons = (questionnaireController != null
                     && commonController != null) ? commonControllerItems() : java.util.List.of();
             reporting.ifPresent(fields -> applyReportingFields(commons, fields));
+            regCfg.ifPresent(this::applyRegistrationConfig);
             File file = ExcelWriter.saveToExcel(patients, sessions, practitioners, encounters, questionnaires, commons,
                     chosen);
             AppState.setCurrentExcelFile(file);
@@ -324,9 +330,13 @@ public class MainController {
                 onExportExcelAs();
                 return;
             }
+            var regCfg = promptRegistrationConfig();
+            if (regCfg.isEmpty())
+                return;
             var reporting = promptReportingFields();
             if (reporting.isEmpty())
                 return;
+            regCfg.ifPresent(this::applyRegistrationConfig);
             // Prompt for volunteer_attendance_report practitioner count
             int total = practitioners != null ? practitioners.size() : 0;
             if (total > 0) {
@@ -356,6 +366,7 @@ public class MainController {
             java.util.List<com.aac.kpi.model.CommonRow> commons = (questionnaireController != null
                     && commonController != null) ? commonControllerItems() : java.util.List.of();
             reporting.ifPresent(fields -> applyReportingFields(commons, fields));
+            regCfg.ifPresent(this::applyRegistrationConfig);
             File file = ExcelWriter.saveToExcel(patients, sessions, practitioners, encounters, questionnaires, commons,
                     dest);
             AppState.setDirty(false);
@@ -400,6 +411,25 @@ public class MainController {
         AppState.setReportingMonthOverride(fields.reportingMonth());
         AppState.setReportDateOverride(fields.reportDate());
         if (commonController != null) commonController.refreshTable();
+    }
+
+    private java.util.Optional<KpiRegistrationDialog.RegistrationSelection> promptRegistrationConfig() {
+        return KpiRegistrationDialog.prompt(
+                AppState.getRobustRegistrationCount(),
+                AppState.getFrailRegistrationCount(),
+                AppState.getBuddingRegistrationCount(),
+                AppState.getBefriendingRegistrationCount()
+        );
+    }
+
+    private void applyRegistrationConfig(KpiRegistrationDialog.RegistrationSelection sel) {
+        if (sel == null || sel.config() == null) return;
+        var cfg = sel.config();
+        AppState.setRobustRegistrationCount(cfg.robust());
+        AppState.setFrailRegistrationCount(cfg.frail());
+        AppState.setBuddingRegistrationCount(cfg.budding());
+        AppState.setBefriendingRegistrationCount(cfg.befriending());
+        AppState.setRegistrationOverrideType(sel.selectedType() == null ? "" : sel.selectedType());
     }
 
     @FXML

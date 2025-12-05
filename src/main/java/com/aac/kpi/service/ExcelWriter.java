@@ -70,13 +70,16 @@ public class ExcelWriter {
             AppState.setMasterData(masterData);
         }
 
+        RegistrationConfig registrationConfig = RegistrationConfig.fromAppState();
+        RegistrationData registrationData = buildRegistrationData(patients, registrationConfig, AppState.getRegistrationOverrideType());
+
         try (XSSFWorkbook wb = new XSSFWorkbook()) {
             CellStyle highlightStyle = createHighlightStyle(wb);
             writeMasterDataSheet(wb, masterData);
             writeCombinedCommonSheet(wb, patients, sessions, practitioners, encounters, questionnaires, commonRows,
-                    masterData, highlightStyle);
-            writeEventSessionSheet(wb, sessions, highlightStyle);
-            writeEventSessionsNricSheet(wb, patients, sessions);
+                    masterData, highlightStyle, registrationData);
+            writeEventSessionSheet(wb, sessions, highlightStyle, registrationData);
+            writeEventSessionsNricSheet(wb, patients, registrationData);
             writePatientSheet(wb, patients, sessions, highlightStyle);
             writePractitionerSheet(wb, practitioners, masterData, highlightStyle);
             if (encounters != null && !encounters.isEmpty())
@@ -237,7 +240,7 @@ public class ExcelWriter {
         autoSize(sheet, headers.length);
     }
 
-    private static void writeEventSessionSheet(XSSFWorkbook wb, List<EventSession> sessions, CellStyle highlightStyle) {
+    private static void writeEventSessionSheet(XSSFWorkbook wb, List<EventSession> sessions, CellStyle highlightStyle, RegistrationData registrationData) {
         // Rename sheet to match expected name
         XSSFSheet sheet = wb.createSheet("Event Sessions");
         String[] headers = new String[] {
@@ -277,7 +280,9 @@ public class ExcelWriter {
             row.createCell(c++).setCellValue(s.getEventSessionDuration1());
             row.createCell(c++).setCellValue(nvl(s.getEventSessionVenue1()));
             row.createCell(c++).setCellValue(s.getEventSessionCapacity1());
-            row.createCell(c++).setCellValue(nvl(s.getEventSessionPatientReferences1()));
+            String regJoined = String.join("##", registrationData.lookupRegistrationIds(nvl(s.getEventSessionPatientReferences1())));
+            if (regJoined.isBlank()) regJoined = nvl(s.getEventSessionPatientReferences1());
+            row.createCell(c++).setCellValue(regJoined);
             row.createCell(c++).setCellValue(s.isAttendedIndicator() ? "TRUE" : "FALSE");
             row.createCell(c++).setCellValue(nvl(s.getPurposeOfContact()));
             if (highlightStyle != null && !compId.isEmpty()
@@ -473,7 +478,8 @@ public class ExcelWriter {
             List<com.aac.kpi.model.QuestionnaireResponse> questionnaires,
             List<com.aac.kpi.model.CommonRow> residentRows,
             MasterData masterData,
-            CellStyle highlightStyle) {
+            CellStyle highlightStyle,
+            RegistrationData registrationData) {
         XSSFSheet sheet = wb.createSheet("Common");
 
         // Styles
@@ -511,7 +517,7 @@ public class ExcelWriter {
 
         // Section 3: event_report
         r = writeSectionTitle(sheet, r, "event_report", titleStyle);
-        r = writeEventReportSection(sheet, r, patients, sessions, practitioners, columnHeaderStyle, masterData);
+        r = writeEventReportSection(sheet, r, patients, sessions, practitioners, columnHeaderStyle, masterData, registrationData);
 
         // Section 4: organization_report
         r = writeSectionTitle(sheet, r, "organization_report", titleStyle);
@@ -531,6 +537,7 @@ public class ExcelWriter {
         List<String> desiredOrder = List.of(
                 "Common",
                 "Event Sessions",
+                "Event Sessions NRIC",
                 "Patient (Master)",
                 "Practitioner (Master)",
                 "Encounter (Master)",
@@ -726,7 +733,8 @@ public class ExcelWriter {
             List<EventSession> sessions,
             List<com.aac.kpi.model.Practitioner> practitioners,
             CellStyle headerStyle,
-            MasterData masterData) {
+            MasterData masterData,
+            RegistrationData registrationData) {
         // Columns as requested
         // Build dynamic headers: add is_attended_session_patientN only up to max refs
         // across events
@@ -752,16 +760,16 @@ public class ExcelWriter {
         for (EventSession s : sessions) {
             if (!s.isAttendedIndicator())
                 continue;
-            String pid = nvl(s.getEventSessionPatientReferences1());
-            if (!pid.isBlank()) {
-                Set<String> sanitized = new LinkedHashSet<>();
-                for (String part : pid.split("##")) {
-                    String clean = StringUtils.sanitizeAlphaNum(part);
-                    if (!clean.isBlank())
-                        sanitized.add(clean);
-                }
-                maxRefs = Math.max(maxRefs, sanitized.size());
+            String raw = nvl(s.getEventSessionPatientReferences1());
+            if (raw.isBlank()) continue;
+            LinkedHashSet<String> refs = new LinkedHashSet<>();
+            for (String part : raw.split("##")) {
+                String clean = StringUtils.sanitizeAlphaNum(part);
+                if (clean.isBlank()) continue;
+                List<String> regs = registrationData.lookupRegistrationIds(clean);
+                if (regs.isEmpty()) refs.add(clean); else refs.addAll(regs);
             }
+            maxRefs = Math.max(maxRefs, refs.size());
         }
 
         List<String> headerList = new ArrayList<>(List.of(
@@ -818,9 +826,10 @@ public class ExcelWriter {
                 capacitySum += Math.max(0, s.getEventSessionCapacity1());
             }
 
-            // Collect attending patient references (unique) from sessions where
-            // attendedIndicator = true
-            LinkedHashSet<String> attendeeIds = new LinkedHashSet<>();
+            // Collect attending registration references (unique) from sessions where
+            // attendedIndicator = true, and track patient IDs for KPI lookups
+            LinkedHashSet<String> attendeeRegs = new LinkedHashSet<>();
+            LinkedHashSet<String> attendeePatientIds = new LinkedHashSet<>();
             for (EventSession s : list) {
                 if (!s.isAttendedIndicator())
                     continue;
@@ -828,16 +837,22 @@ public class ExcelWriter {
                 if (raw.isBlank()) continue;
                 for (String part : raw.split("##")) {
                     String clean = StringUtils.sanitizeAlphaNum(part);
-                    if (!clean.isBlank())
-                        attendeeIds.add(clean);
+                    if (clean.isBlank()) continue;
+                    attendeePatientIds.add(clean);
+                    List<String> regs = registrationData.lookupRegistrationIds(clean);
+                    if (regs.isEmpty()) {
+                        attendeeRegs.add(clean);
+                    } else {
+                        attendeeRegs.addAll(regs);
+                    }
                 }
             }
 
             // Compute event_type by majority of attendees' KPI type (if available)
             String eventType = "";
-            if (!attendeeIds.isEmpty()) {
+            if (!attendeePatientIds.isEmpty()) {
                 Map<String, Integer> counts = new HashMap<>();
-                for (String pid : attendeeIds) {
+                for (String pid : attendeePatientIds) {
                     Patient p = patientIndexSan.get(pid);
                     String t = p != null ? nvl(p.getKpiType()) : "";
                     if (!t.isBlank())
@@ -869,7 +884,7 @@ public class ExcelWriter {
             // aap_provider & GUI fields (no clear mapping; use AAC from first attendee if
             // available)
             String aac = "";
-            for (String pid : attendeeIds) {
+            for (String pid : attendeePatientIds) {
                 Patient p = patientIndexSan.get(pid);
                 if (p != null) {
                     aac = nvl(p.getAac());
@@ -915,8 +930,9 @@ public class ExcelWriter {
                     if (!raw.isBlank()) {
                         for (String part : raw.split("##")) {
                             String clean = StringUtils.sanitizeAlphaNum(part);
-                            if (!clean.isBlank())
-                                sessionRefs.add(clean);
+                            if (clean.isBlank()) continue;
+                            List<String> regs = registrationData.lookupRegistrationIds(clean);
+                            if (regs.isEmpty()) sessionRefs.add(clean); else sessionRefs.addAll(regs);
                         }
                     }
                 }
@@ -1244,35 +1260,18 @@ public class ExcelWriter {
         autoSize(sheet, headers.length);
     }
 
-    private static void writeEventSessionsNricSheet(XSSFWorkbook wb, List<Patient> patients, List<EventSession> sessions) {
+    private static void writeEventSessionsNricSheet(XSSFWorkbook wb, List<Patient> patients, RegistrationData registrationData) {
         XSSFSheet sheet = wb.createSheet("Event Sessions NRIC");
-        String[] headers = new String[] {
-                "patient_identifier_value",
-                "number_of_attended_indicator",
-                "registration_id1",
-                "registration_value1",
-                "registration_id2",
-                "registration_value2",
-                "registration_id3",
-                "registration_value3"
-        };
-        createHeaderRow(sheet, headers);
-
-        // Count attended sessions per patient reference (sanitized)
-        Map<String, Integer> attendedCounts = new HashMap<>();
-        for (EventSession session : sessions) {
-            if (session == null || !session.isAttendedIndicator())
-                continue;
-            String raw = nvl(session.getEventSessionPatientReferences1());
-            if (raw.isBlank())
-                continue;
-            for (String part : raw.split("##")) {
-                String clean = StringUtils.sanitizeAlphaNum(nvl(part));
-                if (clean.isBlank())
-                    continue;
-                attendedCounts.merge(clean, 1, Integer::sum);
-            }
+        java.util.List<String> headerList = new java.util.ArrayList<>();
+        headerList.add("patient_identifier_value");
+        headerList.add("number_of_attended_indicator");
+        int maxCols = Math.max(1, registrationData.maxRegistrationPerPatient());
+        for (int n = 1; n <= maxCols; n++) {
+            headerList.add("registration_id" + n);
+            headerList.add("registration_value" + n);
         }
+        String[] headers = headerList.toArray(new String[0]);
+        createHeaderRow(sheet, headers);
 
         int r = 1;
         for (Patient p : patients) {
@@ -1282,16 +1281,20 @@ public class ExcelWriter {
             if (identifier.isBlank())
                 identifier = nvl(p.getPatientId());
             String idKey = StringUtils.sanitizeAlphaNum(identifier);
-            int count = attendedCounts.getOrDefault(idKey, 0);
+            java.util.List<String> regIds = registrationData.lookupRegistrationIds(idKey);
+            int count = regIds.size();
 
             row.createCell(c++).setCellValue(identifier);
             row.createCell(c++).setCellValue(count);
-            row.createCell(c++).setCellValue(RandomDataUtil.uuid32().toUpperCase());
-            row.createCell(c++).setCellValue("TRUE");
-            row.createCell(c++).setCellValue(RandomDataUtil.uuid32().toUpperCase());
-            row.createCell(c++).setCellValue("TRUE");
-            row.createCell(c++).setCellValue(RandomDataUtil.uuid32().toUpperCase());
-            row.createCell(c).setCellValue("TRUE");
+            for (int idx = 0; idx < maxCols; idx++) {
+                if (idx < regIds.size()) {
+                    row.createCell(c++).setCellValue(regIds.get(idx));
+                    row.createCell(c++).setCellValue(RandomDataUtil.randomInt(0, 1) == 1 ? "TRUE" : "FALSE");
+                } else {
+                    row.createCell(c++).setCellValue("");
+                    row.createCell(c++).setCellValue("");
+                }
+            }
         }
         autoSize(sheet, headers.length);
     }
@@ -1516,6 +1519,85 @@ public class ExcelWriter {
                 clone.setFillForegroundColor(template.getFillForegroundColor());
             }
             cell.setCellStyle(clone);
+        }
+    }
+
+    private static RegistrationData buildRegistrationData(List<Patient> patients, RegistrationConfig cfg, String overrideType) {
+        RegistrationData data = new RegistrationData();
+        for (Patient p : patients) {
+            int count = resolveRegistrationCountForType(
+                    (overrideType != null && !overrideType.isBlank()) ? overrideType : nvl(p.getKpiType()),
+                    cfg);
+            if (count <= 0)
+                continue;
+            List<String> ids = new ArrayList<>(count);
+            for (int i = 0; i < count; i++) {
+                ids.add(RandomDataUtil.uuid32().toUpperCase());
+            }
+            data.registerPatient(p, ids);
+        }
+        return data;
+    }
+
+    private static int resolveRegistrationCountForType(String kpiType, RegistrationConfig cfg) {
+        String t = kpiType == null ? "" : kpiType.toLowerCase();
+        if (t.contains("robust")) {
+            return Math.min(Math.max(cfg.robust(), 2), 5);
+        } else if (t.contains("frail")) {
+            return Math.max(0, cfg.frail());
+        } else if (t.contains("bud")) { // budding
+            return Math.max(6, cfg.budding());
+        } else if (t.contains("befriend")) {
+            return Math.max(12, cfg.befriending());
+        }
+        return Math.max(1, cfg.robust());
+    }
+
+    private record RegistrationConfig(int robust, int frail, int budding, int befriending) {
+        static RegistrationConfig fromAppState() {
+            return new RegistrationConfig(
+                    AppState.getRobustRegistrationCount() <= 0 ? 2 : AppState.getRobustRegistrationCount(),
+                    AppState.getFrailRegistrationCount() < 0 ? 0 : AppState.getFrailRegistrationCount(),
+                    AppState.getBuddingRegistrationCount() <= 0 ? 6 : AppState.getBuddingRegistrationCount(),
+                    AppState.getBefriendingRegistrationCount() <= 0 ? 12 : AppState.getBefriendingRegistrationCount()
+            );
+        }
+    }
+
+    private static class RegistrationData {
+        private final Map<String, List<String>> byKey = new HashMap<>();
+        private int maxPerPatient = 0;
+
+        void registerPatient(Patient p, List<String> registrationIds) {
+            if (registrationIds == null || registrationIds.isEmpty() || p == null) return;
+            List<String> copy = List.copyOf(registrationIds);
+            maxPerPatient = Math.max(maxPerPatient, copy.size());
+            String pid = nvl(p.getPatientId());
+            String ident = nvl(p.getPatientIdentifierValue());
+            String pidSan = StringUtils.sanitizeAlphaNum(pid);
+            String identSan = StringUtils.sanitizeAlphaNum(ident);
+            putIfPresent(pid, copy);
+            putIfPresent(ident, copy);
+            putIfPresent(pidSan, copy);
+            putIfPresent(identSan, copy);
+        }
+
+        private void putIfPresent(String key, List<String> ids) {
+            if (key == null || key.isBlank()) return;
+            byKey.put(key, ids);
+        }
+
+        List<String> lookupRegistrationIds(String patientRef) {
+            if (patientRef == null || patientRef.isBlank()) return java.util.List.of();
+            String ref = patientRef.split("##")[0].trim();
+            String san = StringUtils.sanitizeAlphaNum(ref);
+            List<String> ids = byKey.get(ref);
+            if (ids == null || ids.isEmpty()) ids = byKey.get(san);
+            return ids == null ? java.util.List.of() : ids;
+        }
+
+        int maxRegistrationPerPatient() {
+            return maxPerPatient;
         }
     }
 
