@@ -160,6 +160,8 @@ public class JsonCsvController {
         if (element == null) return Optional.empty();
         if (element.isJsonObject()) {
             JsonObject obj = element.getAsJsonObject();
+            Optional<String> direct = extractIdentifier(obj);
+            if (direct.isPresent()) return direct;
             Optional<String> authorAac = extractFromAuthor(obj);
             if (authorAac.isPresent()) return authorAac;
             for (String key : obj.keySet()) {
@@ -177,6 +179,30 @@ public class JsonCsvController {
             for (JsonElement child : element.getAsJsonArray()) {
                 Optional<String> found = findAacId(child);
                 if (found.isPresent()) return found;
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<String> extractIdentifier(JsonObject obj) {
+        JsonElement system = obj.get("system");
+        JsonElement value = obj.get("value");
+        if (system != null && value != null &&
+                "http://ihis.sg/identifier/aac-center-id".equals(system.getAsString())) {
+            return normalizeAacId(value.getAsString());
+        }
+        JsonElement identifier = obj.get("identifier");
+        if (identifier != null) {
+            if (identifier.isJsonObject()) {
+                Optional<String> maybe = extractIdentifier(identifier.getAsJsonObject());
+                if (maybe.isPresent()) return maybe;
+            } else if (identifier.isJsonArray()) {
+                for (JsonElement idEntry : identifier.getAsJsonArray()) {
+                    if (idEntry.isJsonObject()) {
+                        Optional<String> maybe = extractIdentifier(idEntry.getAsJsonObject());
+                        if (maybe.isPresent()) return maybe;
+                    }
+                }
             }
         }
         return Optional.empty();
@@ -223,7 +249,7 @@ public class JsonCsvController {
         String candidate = raw.trim();
         if (candidate.isEmpty()) return Optional.empty();
         String upper = candidate.toUpperCase(Locale.ROOT);
-        if (upper.matches("AAC\\d{3,}")) {
+        if (upper.matches("AAC[A-Z0-9-]{1,}")) {
             return Optional.of(upper);
         }
         return Optional.empty();

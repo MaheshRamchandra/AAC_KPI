@@ -28,8 +28,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 
 public class JsonExportController {
-    @FXML private TextField jarPathField;
-    @FXML private Button jarBrowseButton;
     @FXML private TextField excelPathField;
     @FXML private Button excelBrowseButton;
     @FXML private TextField outputFolderField;
@@ -56,7 +54,6 @@ public class JsonExportController {
     private ObservableList<QuestionnaireResponse> questionnaires;
     private ObservableList<CommonRow> commonRows;
 
-    private final FileChooser jarChooser = new FileChooser();
     private final FileChooser excelChooser = new FileChooser();
     private final DirectoryChooser directoryChooser = new DirectoryChooser();
 
@@ -73,8 +70,6 @@ public class JsonExportController {
         this.questionnaires = questionnaires;
         this.commonRows = commonRows;
         directoryChooser.setTitle("Select output folder");
-        jarChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JAR Files", "*.jar"));
-        jarChooser.setTitle("Select converter JAR");
         excelChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel Files", "*.xlsx", "*.xls"));
         excelChooser.setTitle("Select KPI Excel");
         updateCountsFromData();
@@ -82,8 +77,6 @@ public class JsonExportController {
 
     @FXML
     private void initialize() {
-        jarPathField.setText(AppState.getJsonConverterJarPath());
-        jarPathField.textProperty().addListener((obs, old, value) -> AppState.setJsonConverterJarPath(value));
         logArea.setEditable(false);
         logArea.setWrapText(true);
         statusLabel.setText("Ready to export KPI JSON");
@@ -94,14 +87,6 @@ public class JsonExportController {
         if (excelPathField == null) return;
         String value = file != null ? file.getAbsolutePath() : "";
         Platform.runLater(() -> excelPathField.setText(value));
-    }
-
-    @FXML
-    private void onBrowseJar() {
-        File file = jarChooser.showOpenDialog(jarPathField.getScene().getWindow());
-        if (file != null) {
-            jarPathField.setText(file.getAbsolutePath());
-        }
     }
 
     @FXML
@@ -142,7 +127,6 @@ public class JsonExportController {
     @FXML
     private void onRunExport() {
         try {
-            File jar = requireFile(jarPathField.getText(), "Converter JAR");
             File excel = requireFile(excelPathField.getText(), "Excel input file");
             File outputFolder = requireDirectory(outputFolderField.getText(), "Output folder");
 
@@ -163,9 +147,8 @@ public class JsonExportController {
             Task<JsonExportService.Result> task = new Task<>() {
                 @Override
                 protected JsonExportService.Result call() throws Exception {
-                    updateMessage("Running JSON converter…");
+                    updateMessage("Running embedded JSON converter…");
                     JsonExportService.Result result = JsonExportService.run(
-                            jar,
                             excel,
                             outputFolder,
                             aacCount,
@@ -333,4 +316,5 @@ public class JsonExportController {
         alert.setHeaderText(null);
         alert.showAndWait();
     }
+
 }

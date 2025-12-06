@@ -14,6 +14,7 @@ public final class AppState {
     private static volatile int volunteerPractitionerCount = 0;
     private static volatile MasterData masterData;
     private static volatile String jsonConverterJarPath = "lib/KPITool-1.0-SNAPSHOT-jar-with-dependencies.jar";
+    private static volatile String javaFxModulePath = "";
     private static volatile String eventReportLabel = "";
     private static volatile int volunteersPerCenter = 3;
     private static volatile int aacCenterCount = 20;
@@ -52,6 +53,9 @@ public final class AppState {
 
     public static String getJsonConverterJarPath() { return jsonConverterJarPath; }
     public static void setJsonConverterJarPath(String path) { if (path != null) jsonConverterJarPath = path; }
+
+    public static String getJavaFxModulePath() { return javaFxModulePath; }
+    public static void setJavaFxModulePath(String path) { if (path != null) javaFxModulePath = path; }
 
     public static String getEventReportLabel() { return eventReportLabel; }
     public static void setEventReportLabel(String label) { eventReportLabel = label == null ? "" : label; }
