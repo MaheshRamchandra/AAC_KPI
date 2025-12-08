@@ -1554,6 +1554,7 @@ public class ExcelWriter {
                 ids.add(RandomDataUtil.uuid32().toUpperCase());
             }
             List<Boolean> values = alignRegistrationValues(count, scenarioValues);
+            ids.sort(String.CASE_INSENSITIVE_ORDER);
             data.registerPatient(p, ids, values);
         }
         return data;
@@ -1656,6 +1657,8 @@ public class ExcelWriter {
         }
     }
 
+    private static final int EXCEL_TEXT_LIMIT = 32767;
+
     private static String reportingMonthWithOverride(String fallback) {
         String override = AppState.getReportingMonthOverride();
         if (override != null && !override.isBlank())
@@ -1671,7 +1674,19 @@ public class ExcelWriter {
     }
 
     private static String nvl(String s) {
-        return s == null ? "" : s;
+        return safeText(s);
+    }
+
+    private static String safeText(String s) {
+        if (s == null)
+            return "";
+        if (s.length() <= EXCEL_TEXT_LIMIT)
+            return s;
+        // Trim and add an ellipsis marker so the value stays within Excel's limit
+        System.err.println("[ExcelWriter] Truncated cell value length " + s.length() + " -> "
+                + (EXCEL_TEXT_LIMIT - 3) + " chars. Preview: "
+                + s.substring(0, Math.min(64, s.length())).replaceAll("\\s+", " ") + "...");
+        return s.substring(0, EXCEL_TEXT_LIMIT - 3) + "...";
     }
 
     public static String nowStamp() {
@@ -1798,31 +1813,9 @@ public class ExcelWriter {
             row.createCell(idx).setCellValue("");
             return;
         }
-        java.time.LocalDateTime dt = parseDateTime(v);
-        if (dt == null) {
-            try {
-                // Try parsing ISO offset
-                java.time.OffsetDateTime odt = java.time.OffsetDateTime.parse(v,
-                        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX"));
-                dt = odt.toLocalDateTime();
-            } catch (Exception ignored) {
-            }
-        }
-        if (dt == null) {
-            // Try simple date inputs by normalizing to 09:00 +08:00
-            java.time.LocalDate d = parseLocalDateFlexible(v);
-            if (d != null) {
-                dt = d.atTime(9, 0);
-            }
-        }
-        if (dt != null) {
-            java.util.Date util = java.util.Date.from(dt.atZone(java.time.ZoneId.of("Asia/Singapore")).toInstant());
-            Cell cell = row.createCell(idx);
-            cell.setCellValue(util);
-            cell.setCellStyle(dateTimeStyle);
-        } else {
-            row.createCell(idx).setCellValue(toIsoOffset(v));
-        }
+        // Always write as ISO text with explicit +08:00 so Excel shows the offset.
+        String iso = toIsoOffset(v);
+        row.createCell(idx).setCellValue(iso.isEmpty() ? v : iso);
     }
 
     private static String toIsoOffset(String s) {

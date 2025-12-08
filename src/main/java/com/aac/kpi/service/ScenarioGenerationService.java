@@ -103,6 +103,7 @@ public final class ScenarioGenerationService {
         // Build Common rows from the aggregated lists; Common rows stay
         // scenario-isolated because patients/events/encounters/questionnaires
         // are generated per scenario with unique ids.
+        sortGeneratedLists(patients, sessions, encounters, questionnaires, practitioners);
         List<CommonRow> commonRows = CommonBuilderService.build(patients, sessions, encounters, questionnaires,
                 practitioners);
         applyCommonOverrides(commonRows, patientScenarioLookup);
@@ -144,15 +145,23 @@ public final class ScenarioGenerationService {
             }
         }
 
-        int contactLogCount = parsePositiveInt(scenario.getContactLogs(), 1);
+        int contactLogCount = parsePositiveInt(scenario.getContactLogs(), 0);
         if (contactLogCount <= 0) {
-            contactLogCount = parsePositiveInt(getExtra(extras, "contactlogs", "contact log", "encounters", "encountercount", "contact logs (encounters)"), 1);
+            contactLogCount = parsePositiveInt(getContactLogExtra(extras), 0);
+        }
+        if (contactLogCount <= 0) {
+            contactLogCount = Math.max(1, aapAttendanceCount);
+        }
+        if (contactLogCount > 50) {
+            System.err.println("[ScenarioGeneration] High contact logs detected: " + contactLogCount
+                    + " for scenario with seniors=" + numberOfSeniors + " and title=" + nvl(scenario.getTitle())
+                    + ". Check 'Contact logs (encounters)' column or extras.");
         }
 
         String modeOfEvent = nvl(scenario.getModeOfEvent());
         String boundary = nvl(scenario.getWithinBoundary());
         String purpose = nvl(scenario.getPurposeOfContact());
-        int age = parsePositiveInt(scenario.getAge(), 60);
+        int age = deriveAge(scenario);
         int socialRisk = parseSocialRisk(nvl(scenario.getSocialRiskFactorScore()), 0);
         if (socialRisk <= 0) {
             socialRisk = parseSocialRisk(getExtra(extras, "socialriskfactor", "rf", "socialrisk", "social risk factor"), 0);
@@ -515,6 +524,16 @@ public final class ScenarioGenerationService {
         return values;
     }
 
+    private static int deriveAge(ScenarioTestCase scenario) {
+        String birth = nvl(scenario.getPatientBirthdate());
+        if (!birth.isBlank() && birth.matches("\\d{1,3}")) {
+            return parsePositiveInt(birth, 60);
+        }
+        int ageFromField = parsePositiveInt(scenario.getAge(), -1);
+        if (ageFromField > 0) return ageFromField;
+        return 60;
+    }
+
     private static int parsePositiveInt(String raw, int defaultValue) {
         if (raw == null) return defaultValue;
         String digits = raw.replaceAll("[^0-9-]", "");
@@ -552,6 +571,40 @@ public final class ScenarioGenerationService {
             }
         }
         return "";
+    }
+
+    private static String getContactLogExtra(Map<String, String> extras) {
+        if (extras == null || extras.isEmpty()) return "";
+        Set<String> allowed = Set.of(
+                "contactlogs",
+                "contactlog",
+                "contactlogsencounters",
+                "contactlogs(encounters)",
+                "contactlog(encounters)",
+                "contactlogsencounter",
+                "contactlogs(encounter)",
+                "encountercount"
+        );
+        for (Map.Entry<String, String> entry : extras.entrySet()) {
+            String norm = normalizeKey(entry.getKey());
+            if (allowed.contains(norm)) {
+                return entry.getValue();
+            }
+        }
+        return "";
+    }
+
+    private static void sortGeneratedLists(List<Patient> patients,
+                                           List<EventSession> sessions,
+                                           List<Encounter> encounters,
+                                           List<QuestionnaireResponse> questionnaires,
+                                           List<Practitioner> practitioners) {
+        Comparator<String> nullSafe = Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER);
+        patients.sort(Comparator.comparing(Patient::getPatientId, nullSafe));
+        sessions.sort(Comparator.comparing(EventSession::getCompositionId, nullSafe));
+        encounters.sort(Comparator.comparing(Encounter::getEncounterId, nullSafe));
+        questionnaires.sort(Comparator.comparing(QuestionnaireResponse::getQuestionnaireId, nullSafe));
+        practitioners.sort(Comparator.comparing(Practitioner::getPractitionerId, nullSafe));
     }
 
     private static String normalizeKey(String key) {
