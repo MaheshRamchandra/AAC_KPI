@@ -5,6 +5,9 @@ import com.aac.kpi.service.MasterDataService.MasterData;
 import java.io.File;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 
 public final class AppState {
@@ -26,6 +29,11 @@ public final class AppState {
     private static volatile int buddingRegistrationCount = 6;
     private static volatile int befriendingRegistrationCount = 12;
     private static volatile String registrationOverrideType = "";
+    private static final Map<String, List<Boolean>> scenarioRegistrationValues = new HashMap<>();
+    private static volatile boolean scenarioSkipPrompts = false;
+    private static final Set<String> scenarioSkipBuddyingDeriveIds = new LinkedHashSet<>();
+    private static volatile String scenarioSheetName = "";
+    private static volatile String scenarioSheetKpiType = "";
 
     private static final Set<String> highlightedPatientIds = new LinkedHashSet<>();
     private static final Set<String> highlightedEventSessionCompositionIds = new LinkedHashSet<>();
@@ -96,6 +104,39 @@ public final class AppState {
     public static void setRegistrationOverrideType(String value) {
         registrationOverrideType = value == null ? "" : value.trim();
     }
+
+    public static void clearScenarioRegistrationValues() { scenarioRegistrationValues.clear(); }
+    public static void putScenarioRegistrationValues(String key, List<Boolean> values) {
+        if (key == null || key.isBlank()) return;
+        if (values == null) return;
+        scenarioRegistrationValues.put(key, List.copyOf(values));
+    }
+    public static List<Boolean> getScenarioRegistrationValues(String key) {
+        if (key == null || key.isBlank()) return List.of();
+        List<Boolean> vals = scenarioRegistrationValues.get(key);
+        return vals == null ? List.of() : vals;
+    }
+
+    public static boolean isScenarioSkipPrompts() { return scenarioSkipPrompts; }
+    public static void setScenarioSkipPrompts(boolean value) { scenarioSkipPrompts = value; }
+
+    public static void addSkipBuddyingDeriveId(String patientId) {
+        if (patientId != null && !patientId.isBlank()) {
+            scenarioSkipBuddyingDeriveIds.add(patientId);
+        }
+    }
+
+    public static boolean shouldSkipBuddyingDerive(String patientId) {
+        return patientId != null && scenarioSkipBuddyingDeriveIds.contains(patientId);
+    }
+
+    public static void clearSkipBuddyingDerive() { scenarioSkipBuddyingDeriveIds.clear(); }
+
+    public static String getScenarioSheetName() { return scenarioSheetName; }
+    public static void setScenarioSheetName(String name) { scenarioSheetName = name == null ? "" : name; }
+
+    public static String getScenarioSheetKpiType() { return scenarioSheetKpiType; }
+    public static void setScenarioSheetKpiType(String kpiType) { scenarioSheetKpiType = kpiType == null ? "" : kpiType; }
 
     public static Set<String> getHighlightedPatientIds() { return Collections.unmodifiableSet(highlightedPatientIds); }
     public static void addHighlightedPatientId(String id) {

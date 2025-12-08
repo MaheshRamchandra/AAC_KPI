@@ -2,6 +2,7 @@ package com.aac.kpi.controller;
 
 import com.aac.kpi.model.ScenarioTestCase;
 import com.aac.kpi.service.ScenarioReader;
+import com.aac.kpi.service.AppState;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -21,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class ScenarioBuilderController {
@@ -41,15 +43,27 @@ public class ScenarioBuilderController {
     @FXML private Spinner<Integer> spTotalCases;
 
     @FXML private TableView<ScenarioTestCase> table;
+    @FXML private TableColumn<ScenarioTestCase, String> cKpi;
     @FXML private TableColumn<ScenarioTestCase, String> cSeniors;
     @FXML private TableColumn<ScenarioTestCase, String> cCfs;
     @FXML private TableColumn<ScenarioTestCase, String> cMode;
     @FXML private TableColumn<ScenarioTestCase, String> cAapDate;
     @FXML private TableColumn<ScenarioTestCase, String> cAapAttendance;
+    @FXML private TableColumn<ScenarioTestCase, String> cIsAttended;
+    @FXML private TableColumn<ScenarioTestCase, String> cTotalRegistration;
     @FXML private TableColumn<ScenarioTestCase, String> cBoundary;
     @FXML private TableColumn<ScenarioTestCase, String> cPurpose;
     @FXML private TableColumn<ScenarioTestCase, String> cContactDate;
+    @FXML private TableColumn<ScenarioTestCase, String> cEncounterStart;
     @FXML private TableColumn<ScenarioTestCase, String> cAge;
+    @FXML private TableColumn<ScenarioTestCase, String> cPatientBirthdate;
+    @FXML private TableColumn<ScenarioTestCase, String> cReportingMonth;
+    @FXML private TableColumn<ScenarioTestCase, String> cReportDate;
+    @FXML private TableColumn<ScenarioTestCase, String> cSocialRisk;
+    @FXML private TableColumn<ScenarioTestCase, String> cBuddyStart;
+    @FXML private TableColumn<ScenarioTestCase, String> cBuddyEnd;
+    @FXML private TableColumn<ScenarioTestCase, String> cBefriendingStart;
+    @FXML private TableColumn<ScenarioTestCase, String> cBefriendingEnd;
     @FXML private TableColumn<ScenarioTestCase, String> cRemarks;
     @FXML private TableColumn<ScenarioTestCase, String> cContactLogs;
     @FXML private TableColumn<ScenarioTestCase, String> cOverrides;
@@ -93,15 +107,51 @@ public class ScenarioBuilderController {
                 cbPurpose.getItems().add(p.getValue());
             }
         }
+        if (cKpi != null) {
+            cKpi.setCellValueFactory(new PropertyValueFactory<>("kpiType"));
+        }
         cSeniors.setCellValueFactory(new PropertyValueFactory<>("numberOfSeniors"));
         cCfs.setCellValueFactory(new PropertyValueFactory<>("cfs"));
         cMode.setCellValueFactory(new PropertyValueFactory<>("modeOfEvent"));
         cAapDate.setCellValueFactory(new PropertyValueFactory<>("aapSessionDate"));
         cAapAttendance.setCellValueFactory(new PropertyValueFactory<>("numberOfAapAttendance"));
+        if (cIsAttended != null) {
+            cIsAttended.setCellValueFactory(new PropertyValueFactory<>("attendedIndicator"));
+        }
+        if (cTotalRegistration != null) {
+            cTotalRegistration.setCellValueFactory(new PropertyValueFactory<>("totalRegistrations"));
+        }
         cBoundary.setCellValueFactory(new PropertyValueFactory<>("withinBoundary"));
         cPurpose.setCellValueFactory(new PropertyValueFactory<>("purposeOfContact"));
         cContactDate.setCellValueFactory(new PropertyValueFactory<>("dateOfContact"));
+        if (cEncounterStart != null) {
+            cEncounterStart.setCellValueFactory(new PropertyValueFactory<>("encounterStart"));
+        }
         cAge.setCellValueFactory(new PropertyValueFactory<>("age"));
+        if (cPatientBirthdate != null) {
+            cPatientBirthdate.setCellValueFactory(new PropertyValueFactory<>("patientBirthdate"));
+        }
+        if (cReportingMonth != null) {
+            cReportingMonth.setCellValueFactory(new PropertyValueFactory<>("reportingMonth"));
+        }
+        if (cReportDate != null) {
+            cReportDate.setCellValueFactory(new PropertyValueFactory<>("reportDate"));
+        }
+        if (cSocialRisk != null) {
+            cSocialRisk.setCellValueFactory(new PropertyValueFactory<>("socialRiskFactorScore"));
+        }
+        if (cBuddyStart != null) {
+            cBuddyStart.setCellValueFactory(new PropertyValueFactory<>("buddyingProgrammePeriodStart"));
+        }
+        if (cBuddyEnd != null) {
+            cBuddyEnd.setCellValueFactory(new PropertyValueFactory<>("buddyingProgrammePeriodEnd"));
+        }
+        if (cBefriendingStart != null) {
+            cBefriendingStart.setCellValueFactory(new PropertyValueFactory<>("befriendingProgrammePeriodStart"));
+        }
+        if (cBefriendingEnd != null) {
+            cBefriendingEnd.setCellValueFactory(new PropertyValueFactory<>("befriendingProgrammePeriodEnd"));
+        }
         cRemarks.setCellValueFactory(new PropertyValueFactory<>("remarks"));
         if (cContactLogs != null) {
             cContactLogs.setCellValueFactory(new PropertyValueFactory<>("contactLogs"));
@@ -134,6 +184,10 @@ public class ScenarioBuilderController {
                 if (table != null) table.refresh();
             });
         }
+        if (cKpi != null) {
+            cKpi.setCellFactory(TextFieldTableCell.forTableColumn());
+            cKpi.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setKpiType(trim(e.getNewValue())); });
+        }
         if (cSeniors != null) {
             cSeniors.setCellFactory(TextFieldTableCell.forTableColumn());
             cSeniors.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setNumberOfSeniors(trim(e.getNewValue())); });
@@ -150,6 +204,14 @@ public class ScenarioBuilderController {
             cAapAttendance.setCellFactory(TextFieldTableCell.forTableColumn());
             cAapAttendance.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setNumberOfAapAttendance(trim(e.getNewValue())); });
         }
+        if (cIsAttended != null) {
+            cIsAttended.setCellFactory(TextFieldTableCell.forTableColumn());
+            cIsAttended.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setAttendedIndicator(trim(e.getNewValue())); });
+        }
+        if (cTotalRegistration != null) {
+            cTotalRegistration.setCellFactory(TextFieldTableCell.forTableColumn());
+            cTotalRegistration.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setTotalRegistrations(trim(e.getNewValue())); });
+        }
         if (cBoundary != null) {
             cBoundary.setCellFactory(TextFieldTableCell.forTableColumn());
             cBoundary.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setWithinBoundary(trim(e.getNewValue())); });
@@ -162,9 +224,45 @@ public class ScenarioBuilderController {
             cContactDate.setCellFactory(TextFieldTableCell.forTableColumn());
             cContactDate.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setDateOfContact(trim(e.getNewValue())); });
         }
+        if (cEncounterStart != null) {
+            cEncounterStart.setCellFactory(TextFieldTableCell.forTableColumn());
+            cEncounterStart.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setEncounterStart(trim(e.getNewValue())); });
+        }
         if (cAge != null) {
             cAge.setCellFactory(TextFieldTableCell.forTableColumn());
             cAge.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setAge(trim(e.getNewValue())); });
+        }
+        if (cPatientBirthdate != null) {
+            cPatientBirthdate.setCellFactory(TextFieldTableCell.forTableColumn());
+            cPatientBirthdate.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setPatientBirthdate(trim(e.getNewValue())); });
+        }
+        if (cReportingMonth != null) {
+            cReportingMonth.setCellFactory(TextFieldTableCell.forTableColumn());
+            cReportingMonth.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setReportingMonth(trim(e.getNewValue())); });
+        }
+        if (cReportDate != null) {
+            cReportDate.setCellFactory(TextFieldTableCell.forTableColumn());
+            cReportDate.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setReportDate(trim(e.getNewValue())); });
+        }
+        if (cSocialRisk != null) {
+            cSocialRisk.setCellFactory(TextFieldTableCell.forTableColumn());
+            cSocialRisk.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setSocialRiskFactorScore(trim(e.getNewValue())); });
+        }
+        if (cBuddyStart != null) {
+            cBuddyStart.setCellFactory(TextFieldTableCell.forTableColumn());
+            cBuddyStart.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setBuddyingProgrammePeriodStart(trim(e.getNewValue())); });
+        }
+        if (cBuddyEnd != null) {
+            cBuddyEnd.setCellFactory(TextFieldTableCell.forTableColumn());
+            cBuddyEnd.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setBuddyingProgrammePeriodEnd(trim(e.getNewValue())); });
+        }
+        if (cBefriendingStart != null) {
+            cBefriendingStart.setCellFactory(TextFieldTableCell.forTableColumn());
+            cBefriendingStart.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setBefriendingProgrammePeriodStart(trim(e.getNewValue())); });
+        }
+        if (cBefriendingEnd != null) {
+            cBefriendingEnd.setCellFactory(TextFieldTableCell.forTableColumn());
+            cBefriendingEnd.setOnEditCommit(e -> { if (e.getRowValue() != null) e.getRowValue().setBefriendingProgrammePeriodEnd(trim(e.getNewValue())); });
         }
         if (cRemarks != null) {
             cRemarks.setCellFactory(TextFieldTableCell.forTableColumn());
@@ -207,16 +305,65 @@ public class ScenarioBuilderController {
         File file = chooser.showOpenDialog(table.getScene() != null ? table.getScene().getWindow() : null);
         if (file == null) return;
         try {
-            List<ScenarioTestCase> loaded = ScenarioReader.readScenarios(file);
+            String sheetToRead = null;
+            List<String> sheets = ScenarioReader.listSheetNames(file);
+            if (sheets.size() > 1) {
+                String preferred = ScenarioReader.guessPreferredSheet(sheets);
+                ChoiceDialog<String> dialog = new ChoiceDialog<>(preferred, sheets);
+                dialog.setTitle("Select sheet");
+                dialog.setHeaderText("Choose the sheet to load scenarios from.");
+                dialog.setContentText("Sheet:");
+                Optional<String> chosen = dialog.showAndWait();
+                if (chosen.isEmpty()) return;
+                sheetToRead = chosen.get();
+            } else if (sheets.size() == 1) {
+                sheetToRead = sheets.get(0);
+            }
+            List<ScenarioTestCase> loaded = ScenarioReader.readScenarios(file, sheetToRead);
             if (loaded.isEmpty()) {
                 showAlert(Alert.AlertType.INFORMATION, "No scenarios found", "The selected file did not contain any scenario rows.");
             } else {
                 scenarios.setAll(loaded);
                 applyGlobalOverridesToScenarios(true);
-                showAlert(Alert.AlertType.INFORMATION, "Loaded", loaded.size() + " scenario(s) imported.");
+                String sheetMsg = sheetToRead == null ? "" : (" from sheet \"" + sheetToRead + "\"");
+                showAlert(Alert.AlertType.INFORMATION, "Loaded", loaded.size() + " scenario(s) imported" + sheetMsg + ".");
+                AppState.setScenarioSkipPrompts(true);
+                AppState.setScenarioSheetName(sheetToRead == null ? "" : sheetToRead);
+                AppState.setScenarioSheetKpiType(kpiTypeFromSheet(sheetToRead));
+                applyReportingMonthFromScenarios(loaded);
             }
         } catch (IOException ex) {
             showAlert(Alert.AlertType.ERROR, "Failed to load scenarios", ex.getMessage());
+        }
+    }
+
+    private String kpiTypeFromSheet(String sheet) {
+        if (sheet == null) return "";
+        String lower = sheet.toLowerCase(java.util.Locale.ENGLISH);
+        if (lower.contains("robust")) return "Robust";
+        if (lower.contains("frail")) return "Frail";
+        if (lower.contains("buddy")) return "Buddying";
+        if (lower.contains("befriend")) return "Befriending";
+        return "";
+    }
+
+    private void applyReportingMonthFromScenarios(List<ScenarioTestCase> loaded) {
+        if (loaded == null) return;
+        String month = loaded.stream()
+                .map(ScenarioTestCase::getReportingMonth)
+                .filter(v -> v != null && !v.isBlank())
+                .findFirst()
+                .orElse("");
+        if (!month.isBlank()) {
+            AppState.setReportingMonthOverride(month.trim());
+        }
+        String date = loaded.stream()
+                .map(ScenarioTestCase::getReportDate)
+                .filter(v -> v != null && !v.isBlank())
+                .findFirst()
+                .orElse("");
+        if (!date.isBlank()) {
+            AppState.setReportDateOverride(date.trim());
         }
     }
 
@@ -224,6 +371,7 @@ public class ScenarioBuilderController {
     private void onAddScenario() {
         if (scenarios == null) return;
         ScenarioTestCase scenario = new ScenarioTestCase();
+        scenario.setKpiType(getComboValue(cbKpiType));
         scenario.setNumberOfSeniors(getTrimmed(tfNumberOfSeniors));
         scenario.setCfs(getComboValue(cbCfs));
         scenario.setModeOfEvent(getComboValue(cbModeOfEvent));

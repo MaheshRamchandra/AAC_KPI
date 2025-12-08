@@ -1,6 +1,7 @@
 package com.aac.kpi.service;
 
 import com.aac.kpi.model.*;
+import com.aac.kpi.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -78,6 +79,7 @@ public final class ScenarioGenerationService {
         List<Encounter> encounters = new ArrayList<>();
         List<QuestionnaireResponse> questionnaires = new ArrayList<>();
         List<Practitioner> practitioners = new ArrayList<>();
+        Map<String, ScenarioTestCase> patientScenarioLookup = new HashMap<>();
 
         // Scenario header highlights: first patient/encounter/etc of each scenario
         AppState.clearHighlightedPatientIds();
@@ -85,6 +87,8 @@ public final class ScenarioGenerationService {
         AppState.clearHighlightedEncounterIds();
         AppState.clearHighlightedQuestionnaireIds();
         AppState.clearHighlightedPractitionerIds();
+        AppState.clearScenarioRegistrationValues();
+        AppState.clearSkipBuddyingDerive();
 
         List<MasterDataService.AacCenter> centers = masterData.getAacCenters();
         for (int idx = 0; idx < scenarios.size(); idx++) {
@@ -93,7 +97,7 @@ public final class ScenarioGenerationService {
                     ? null
                     : centers.get(idx % centers.size());
             generateForScenario(scenario, patients, sessions, encounters, questionnaires, practitioners,
-                    masterData, aacPostalCodes, allPostalCodes, center);
+                    masterData, aacPostalCodes, allPostalCodes, center, patientScenarioLookup);
         }
 
         // Build Common rows from the aggregated lists; Common rows stay
@@ -101,6 +105,7 @@ public final class ScenarioGenerationService {
         // are generated per scenario with unique ids.
         List<CommonRow> commonRows = CommonBuilderService.build(patients, sessions, encounters, questionnaires,
                 practitioners);
+        applyCommonOverrides(commonRows, patientScenarioLookup);
 
         return new Result(patients, sessions, encounters, questionnaires, commonRows, practitioners);
     }
@@ -114,9 +119,14 @@ public final class ScenarioGenerationService {
                                             MasterDataService.MasterData masterData,
                                             Map<String, Set<String>> aacPostalCodes,
                                             Set<String> allPostalCodes,
-                                            MasterDataService.AacCenter selectedCenter) {
+                                            MasterDataService.AacCenter selectedCenter,
+                                            Map<String, ScenarioTestCase> patientScenarioLookup) {
         if (scenario == null) return;
         int numberOfSeniors = parsePositiveInt(scenario.getNumberOfSeniors(), 0);
+        int totalRegistrations = parsePositiveInt(scenario.getTotalRegistrations(), 0);
+        if (numberOfSeniors <= 0 && totalRegistrations > 0) {
+            numberOfSeniors = totalRegistrations;
+        }
         if (numberOfSeniors <= 0) return;
 
         int aapAttendanceCount = parsePositiveInt(scenario.getNumberOfAapAttendance(), 1);
@@ -124,6 +134,15 @@ public final class ScenarioGenerationService {
         IntRange cfsRange = parseCfsRange(cfsText);
         Map<String, String> extras = scenario.getExtraFields() == null ? Map.of() : scenario.getExtraFields();
         List<ScenarioTestCase.ColumnOverride> overrides = scenario.getColumnOverrides() == null ? List.of() : scenario.getColumnOverrides();
+
+        Boolean explicitAttendedFlag = parseBooleanMaybe(scenario.getAttendedIndicator());
+        int attendeesAmongRegistrations = -1;
+        if (explicitAttendedFlag == null && totalRegistrations > 0) {
+            attendeesAmongRegistrations = parsePositiveInt(scenario.getNumberOfAapAttendance(), totalRegistrations);
+            if (attendeesAmongRegistrations > totalRegistrations) {
+                attendeesAmongRegistrations = totalRegistrations;
+            }
+        }
 
         int contactLogCount = parsePositiveInt(scenario.getContactLogs(), 1);
         if (contactLogCount <= 0) {
@@ -134,13 +153,24 @@ public final class ScenarioGenerationService {
         String boundary = nvl(scenario.getWithinBoundary());
         String purpose = nvl(scenario.getPurposeOfContact());
         int age = parsePositiveInt(scenario.getAge(), 60);
-        int socialRisk = parseSocialRisk(getExtra(extras, "socialriskfactor", "rf", "socialrisk", "social risk factor"), 0);
-        String kpiTypeOverride = getExtra(extras, "kpi type", "kpi_type", "kpi");
+        int socialRisk = parseSocialRisk(nvl(scenario.getSocialRiskFactorScore()), 0);
+        if (socialRisk <= 0) {
+            socialRisk = parseSocialRisk(getExtra(extras, "socialriskfactor", "rf", "socialrisk", "social risk factor"), 0);
+        }
+        String kpiTypeOverride = !nvl(scenario.getKpiType()).isBlank()
+                ? scenario.getKpiType()
+                : getExtra(extras, "kpi type", "kpi_type", "kpi");
         String kpiGroupOverride = getExtra(extras, "kpi group", "kpi_group");
 
         String aapRaw = scenario.getAapSessionDate();
         LocalDate aapDate = parseDateFlexible(aapRaw);
-        LocalDate contactDate = parseDateFlexible(scenario.getDateOfContact());
+        LocalDate contactDate = parseDateFlexible(scenario.getEncounterStart());
+        if (contactDate == null) {
+            contactDate = parseDateFlexible(scenario.getDateOfContact());
+        }
+        if (contactDate == null) {
+            contactDate = parseDateFlexible(scenario.getReportDate());
+        }
 
         LocalDate baseDate = contactDate != null ? contactDate
                 : (aapDate != null ? aapDate : LocalDate.now());
@@ -152,13 +182,19 @@ public final class ScenarioGenerationService {
         boolean isOutside = boundary.toLowerCase(Locale.ENGLISH).contains("out");
 
         List<Patient> scenarioPatients = new ArrayList<>();
+        List<Boolean> attendanceFlags = new ArrayList<>();
         for (int i = 0; i < numberOfSeniors; i++) {
+            boolean attended = explicitAttendedFlag != null
+                    ? explicitAttendedFlag
+                    : (attendeesAmongRegistrations >= 0 ? i < attendeesAmongRegistrations : true);
+            attendanceFlags.add(attended);
             Patient p = new Patient();
             String patientId = RandomDataUtil.uuid32();
             p.setPatientId(patientId);
             // keep identifiers offline/dummy; no Selenium
             p.setPatientIdentifierValue(NRICGeneratorUtil.generateFakeNRIC());
-            p.setPatientBirthdate(RandomDataUtil.dobForExactAge(age));
+            p.setPatientBirthdate(resolveBirthdate(nvl(scenario.getPatientBirthdate()), age));
+            List<Boolean> registrationValues = parseRegistrationValues(totalRegistrations, scenario.getAttendedIndicator(), aapAttendanceCount);
             String postal;
             if (isOutside) {
                 postal = chooseOutsidePostal(servedPostals, allPostalCodes);
@@ -180,11 +216,37 @@ public final class ScenarioGenerationService {
             if (kpiGroupOverride != null && !kpiGroupOverride.isBlank()) {
                 p.setKpiGroup(kpiGroupOverride);
             }
+            if (!isBlank(scenario.getBuddyingProgrammePeriodStart())) {
+                p.setBuddyingProgramStartDate(scenario.getBuddyingProgrammePeriodStart().trim());
+            }
+            if (!isBlank(scenario.getBuddyingProgrammePeriodEnd())) {
+                p.setBuddyingProgramEndDate(scenario.getBuddyingProgrammePeriodEnd().trim());
+            } else {
+                AppState.addSkipBuddyingDeriveId(patientId);
+            }
+            if (!isBlank(scenario.getBefriendingProgrammePeriodStart())) {
+                p.setBefriendingProgramStartDate(scenario.getBefriendingProgrammePeriodStart().trim());
+            }
+            if (!isBlank(scenario.getBefriendingProgrammePeriodEnd())) {
+                p.setBefriendingProgramEndDate(scenario.getBefriendingProgrammePeriodEnd().trim());
+            }
             applyPatientOverrides(p, overrides);
             scenarioPatients.add(p);
             patients.add(p);
             if (i == 0) {
                 AppState.addHighlightedPatientId(patientId);
+            }
+            if (patientScenarioLookup != null) {
+                patientScenarioLookup.put(patientId, scenario);
+            }
+            if (registrationValues != null && !registrationValues.isEmpty()) {
+                AppState.putScenarioRegistrationValues(patientId, registrationValues);
+                AppState.putScenarioRegistrationValues(StringUtils.sanitizeAlphaNum(patientId), registrationValues);
+                String pidIdent = nvl(p.getPatientIdentifierValue());
+                if (!pidIdent.isBlank()) {
+                    AppState.putScenarioRegistrationValues(pidIdent, registrationValues);
+                    AppState.putScenarioRegistrationValues(StringUtils.sanitizeAlphaNum(pidIdent), registrationValues);
+                }
             }
 
             Practitioner pr = new Practitioner();
@@ -206,12 +268,13 @@ public final class ScenarioGenerationService {
         if (aapAttendanceCount > 0) {
             List<EventSession> scenarioSessions = generateEventSessionsForScenario(
                     scenarioPatients, aapAttendanceCount, modeOfEvent,
-                    aapRaw, aapDate != null ? aapDate : baseDate, purpose, overrides);
+                    aapRaw, aapDate != null ? aapDate : baseDate, purpose, overrides, attendanceFlags);
             sessions.addAll(scenarioSessions);
         }
 
         List<Encounter> scenarioEncounters = generateEncountersForScenario(
-                scenarioPatients, contactDate != null ? contactDate : baseDate, purpose, contactLogCount, overrides);
+                scenarioPatients, contactDate != null ? contactDate : baseDate, purpose, contactLogCount,
+                scenario.getEncounterStart(), overrides);
         encounters.addAll(scenarioEncounters);
 
         List<QuestionnaireResponse> scenarioQuestionnaires = generateQuestionnairesForScenario(
@@ -225,7 +288,8 @@ public final class ScenarioGenerationService {
                                                                        String aapRaw,
                                                                        LocalDate aapDate,
                                                                        String purpose,
-                                                                       List<ScenarioTestCase.ColumnOverride> overrides) {
+                                                                       List<ScenarioTestCase.ColumnOverride> overrides,
+                                                                       List<Boolean> attendanceFlags) {
         List<EventSession> list = new ArrayList<>();
         if (patients.isEmpty() || aapAttendanceCount <= 0) return List.of();
 
@@ -257,7 +321,11 @@ public final class ScenarioGenerationService {
             }
         }
         int durationMinutes = (int) java.time.Duration.between(startBase, endBase).toMinutes();
-        for (Patient patient : patients) {
+        for (int patientIdx = 0; patientIdx < patients.size(); patientIdx++) {
+            Patient patient = patients.get(patientIdx);
+            boolean attended = attendanceFlags != null && patientIdx < attendanceFlags.size()
+                    ? attendanceFlags.get(patientIdx)
+                    : true;
             for (int attendanceIndex = 0; attendanceIndex < aapAttendanceCount; attendanceIndex++) {
                 EventSession s = new EventSession();
                 s.setCompositionId(RandomDataUtil.uuid32());
@@ -272,7 +340,7 @@ public final class ScenarioGenerationService {
                 s.setEventSessionVenue1(RandomDataUtil.randomVenue());
                 s.setEventSessionCapacity1(Math.max(1, RandomDataUtil.randomCapacity()));
                 s.setEventSessionPatientReferences1(patient.getPatientId());
-                s.setAttendedIndicator(true);
+                s.setAttendedIndicator(attended);
                 s.setPurposeOfContact(purpose);
                 applyEventOverrides(s, overrides);
                 list.add(s);
@@ -289,13 +357,12 @@ public final class ScenarioGenerationService {
                                                                  LocalDate contactDate,
                                                                  String purpose,
                                                                  int contactLogCount,
+                                                                 String encounterStartRaw,
                                                                  List<ScenarioTestCase.ColumnOverride> overrides) {
         List<Encounter> list = new ArrayList<>();
         if (patients.isEmpty()) return List.of();
         if (contactLogCount <= 0) contactLogCount = 1;
         if (contactDate == null) contactDate = LocalDate.now();
-        LocalDateTime start = contactDate.atTime(10, 0);
-
         String[] displays = {"Home Visit", "Video Call", "Centre Visit", "Phone Call"};
         String[] prefixes = {"Mr", "Mrs", "Ms", "Dr"};
         String[] staff = {"Staff A", "Staff B", "Staff C", "Staff D", "Nurse E", "Nurse F", "Counsellor G"};
@@ -308,8 +375,7 @@ public final class ScenarioGenerationService {
                 e.setEncounterId(RandomDataUtil.uuid32().toUpperCase(Locale.ROOT));
                 e.setEncounterStatus("finished");
                 e.setEncounterDisplay(displays[rnd.nextInt(displays.length)]);
-                LocalDateTime encounterStart = start.plusDays(i % 3).plusMinutes(30L * i);
-                e.setEncounterStart(RandomDataUtil.isoTimestampWithOffset(encounterStart, "+08:00"));
+                e.setEncounterStart(resolveEncounterStart(encounterStartRaw, contactDate, i));
                 e.setEncounterPurpose(purpose.isBlank() ? "Befriending" : purpose);
                 String staffName = prefixes[rnd.nextInt(prefixes.length)] + " " + staff[rnd.nextInt(staff.length)];
                 e.setEncounterContactedStaffName(staffName);
@@ -359,6 +425,96 @@ public final class ScenarioGenerationService {
         return list;
     }
 
+    private static void applyCommonOverrides(List<CommonRow> commonRows,
+                                             Map<String, ScenarioTestCase> patientScenarioLookup) {
+        if (commonRows == null || patientScenarioLookup == null || patientScenarioLookup.isEmpty()) return;
+        for (CommonRow row : commonRows) {
+            if (row == null) continue;
+            ScenarioTestCase scenario = patientScenarioLookup.get(row.getPatientReference());
+            if (scenario == null) continue;
+            String reportingMonth = nvl(scenario.getReportingMonth());
+            if (!reportingMonth.isBlank()) {
+                row.setReportingMonth(reportingMonth);
+            }
+            String reportDate = nvl(scenario.getReportDate());
+            if (!reportDate.isBlank()) {
+                row.setLastUpdated(reportDate);
+            }
+        }
+    }
+
+    private static String resolveBirthdate(String birthdateRaw, int fallbackAge) {
+        String value = nvl(birthdateRaw);
+        if (value.isBlank()) {
+            return RandomDataUtil.dobForExactAge(fallbackAge);
+        }
+        if (value.matches("\\d{1,3}")) {
+            int ageOverride = parsePositiveInt(value, fallbackAge);
+            return RandomDataUtil.dobForExactAge(ageOverride);
+        }
+        return value;
+    }
+
+    private static Boolean parseBooleanMaybe(String raw) {
+        if (raw == null) return null;
+        String norm = raw.trim().toLowerCase(Locale.ENGLISH);
+        if (norm.isEmpty()) return null;
+        if (norm.contains("true") || norm.equals("yes") || norm.equals("y") || norm.equals("1")) return true;
+        if (norm.contains("false") || norm.equals("no") || norm.equals("n") || norm.equals("0")) return false;
+        return null;
+    }
+
+    private static String resolveEncounterStart(String encounterStartRaw, LocalDate contactDate, int index) {
+        LocalDate baseDate = contactDate != null ? contactDate : LocalDate.now();
+        if (encounterStartRaw != null && !encounterStartRaw.isBlank()) {
+            LocalDate parsed = parseDateFlexible(encounterStartRaw);
+            if (parsed != null) {
+                LocalDateTime dt = parsed.atTime(10, 0).plusMinutes(30L * index);
+                return RandomDataUtil.isoTimestampWithOffset(dt, "+08:00");
+            }
+            try {
+                LocalDateTime dt = LocalDateTime.parse(encounterStartRaw);
+                return RandomDataUtil.isoTimestampWithOffset(dt, "+08:00");
+            } catch (Exception ignored) {
+            }
+            return encounterStartRaw;
+        }
+        LocalDateTime encounterStart = baseDate.atTime(10, 0).plusDays(index % 3).plusMinutes(30L * index);
+        return RandomDataUtil.isoTimestampWithOffset(encounterStart, "+08:00");
+    }
+
+    private static List<Boolean> parseRegistrationValues(int totalRegistrations, String attendedText, int attendedCount) {
+        if (totalRegistrations <= 0) return List.of();
+        List<Boolean> values = new ArrayList<>();
+        if (attendedText != null && !attendedText.isBlank()) {
+            Matcher m = Pattern.compile("(?i)(true|false)\\s*for\\s*(\\d+)").matcher(attendedText);
+            while (m.find() && values.size() < totalRegistrations) {
+                boolean val = m.group(1).equalsIgnoreCase("true");
+                int n = parsePositiveInt(m.group(2), 0);
+                for (int i = 0; i < n && values.size() < totalRegistrations; i++) {
+                    values.add(val);
+                }
+            }
+            if (!values.isEmpty()) {
+                while (values.size() < totalRegistrations) values.add(false);
+                if (values.size() > totalRegistrations) {
+                    return values.subList(0, totalRegistrations);
+                }
+                return values;
+            }
+        }
+        Boolean all = parseBooleanMaybe(attendedText);
+        if (all != null) {
+            for (int i = 0; i < totalRegistrations; i++) values.add(all);
+            return values;
+        }
+        int trueCount = Math.min(Math.max(attendedCount, 0), totalRegistrations);
+        for (int i = 0; i < totalRegistrations; i++) {
+            values.add(i < trueCount);
+        }
+        return values;
+    }
+
     private static int parsePositiveInt(String raw, int defaultValue) {
         if (raw == null) return defaultValue;
         String digits = raw.replaceAll("[^0-9-]", "");
@@ -401,6 +557,10 @@ public final class ScenarioGenerationService {
     private static String normalizeKey(String key) {
         if (key == null) return "";
         return key.toLowerCase(Locale.ENGLISH).replaceAll("[^a-z0-9]+", "");
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     private static IntRange parseCfsRange(String raw) {

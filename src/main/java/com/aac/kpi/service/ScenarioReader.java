@@ -28,9 +28,19 @@ public class ScenarioReader {
     private static final DataFormatter FORMATTER = new DataFormatter(Locale.ENGLISH);
 
     public static List<ScenarioTestCase> readScenarios(File file) throws IOException {
+        return readScenarios(file, null);
+    }
+
+    public static List<ScenarioTestCase> readScenarios(File file, String sheetName) throws IOException {
         try (FileInputStream fis = new FileInputStream(file);
              XSSFWorkbook workbook = new XSSFWorkbook(fis)) {
-            Sheet sheet = findSheet(workbook);
+            Sheet sheet = null;
+            if (sheetName != null && !sheetName.isBlank()) {
+                sheet = findSheetByName(workbook, sheetName);
+            }
+            if (sheet == null) {
+                sheet = findSheet(workbook);
+            }
             if (sheet == null) return List.of();
             HeaderIndex headerIndex = buildHeaderIndex(sheet);
             List<ScenarioTestCase> scenarios = new ArrayList<>();
@@ -45,22 +55,70 @@ public class ScenarioReader {
                 scenario.setTestStep(getValue(row, headerIndex, usedColumns, "teststep"));
                 scenario.setStepAction(getValue(row, headerIndex, usedColumns, "stepaction", "teststepdetail", "step"));
                 scenario.setStepExpected(getValue(row, headerIndex, usedColumns, "stepexpected", "expected"));
+                scenario.setKpiType(getValue(row, headerIndex, usedColumns, "kpi", "kpitype", "kpi_type", "kpi type"));
                 scenario.setNumberOfSeniors(getValue(row, headerIndex, usedColumns, "numberofseniors", "seniors"));
                 scenario.setCfs(getValue(row, headerIndex, usedColumns, "cfs"));
-                scenario.setModeOfEvent(getValue(row, headerIndex, usedColumns, "modeofevent", "mode of event"));
-                scenario.setAapSessionDate(getValue(row, headerIndex, usedColumns, "aapsessiondate", "latestaapsessiondate"));
+                scenario.setModeOfEvent(getValue(row, headerIndex, usedColumns, "modeofevent", "mode of event", "event_session_mode1"));
+                scenario.setAapSessionDate(getValue(row, headerIndex, usedColumns, "aapsessiondate", "latestaapsessiondate", "event_session_start_date1"));
                 scenario.setNumberOfAapAttendance(getValue(row, headerIndex, usedColumns, "noofaapattendanceinperson", "noofaapattendance", "aapattendance"));
+                scenario.setAttendedIndicator(getValue(row, headerIndex, usedColumns, "is_attended", "attended", "attendedindicator"));
+                scenario.setTotalRegistrations(getValue(row, headerIndex, usedColumns, "nooftotalregistration", "totalregistration", "registrations"));
                 scenario.setWithinBoundary(getValue(row, headerIndex, usedColumns, "withinoroutofserviceboundary", "boundary"));
-                scenario.setPurposeOfContact(getValue(row, headerIndex, usedColumns, "purposeofcontact"));
-                scenario.setDateOfContact(getValue(row, headerIndex, usedColumns, "dateofcontact", "contactdate"));
+                scenario.setPurposeOfContact(getValue(row, headerIndex, usedColumns, "purposeofcontact", "encounter_purpose"));
+                scenario.setEncounterStart(getValue(row, headerIndex, usedColumns, "encounter_start"));
+                scenario.setDateOfContact(getExactValue(row, headerIndex, usedColumns, "dateofcontact", "contactdate"));
                 scenario.setAge(getValue(row, headerIndex, usedColumns, "age"));
                 scenario.setContactLogs(getValue(row, headerIndex, usedColumns, "contactlogs", "contactlog", "contact logs", "encounters", "contactlogs(encounters)"));
                 scenario.setRemarks(getValue(row, headerIndex, usedColumns, "remarks", "others"));
+                scenario.setPatientBirthdate(getValue(row, headerIndex, usedColumns, "patient_birthdate", "birthdate", "dob"));
+                scenario.setReportingMonth(getValue(row, headerIndex, usedColumns, "extension_reporting_month", "reporting_month"));
+                scenario.setReportDate(getExactValue(row, headerIndex, usedColumns, "date", "report_date", "reportdate", "reporting_date"));
+                scenario.setSocialRiskFactorScore(getValue(row, headerIndex, usedColumns, "social_risk_factor_score", "socialriskfactorscore", "socialriskfactor", "rf"));
+                scenario.setBuddyingProgrammePeriodStart(getValue(row, headerIndex, usedColumns, "resident_buddying_programme_period_start", "buddying_programme_period_start"));
+                scenario.setBuddyingProgrammePeriodEnd(getValue(row, headerIndex, usedColumns, "resident_buddying_programme_period_end", "buddying_programme_period_end"));
+                scenario.setBefriendingProgrammePeriodStart(getValue(row, headerIndex, usedColumns, "resident_befriending_programme_period_start", "befriending_programme_period_start"));
+                scenario.setBefriendingProgrammePeriodEnd(getValue(row, headerIndex, usedColumns, "resident_befriending_programme_period_end", "befriending_programme_period_end"));
                 scenario.setExtraFields(captureExtraFields(row, headerIndex, usedColumns));
-                if (!isEmptyRow(scenario)) scenarios.add(scenario);
+                if (isBlank(scenario.getReportDate())) {
+                    String fromExtras = firstExtraWithKey(scenario.getExtraFields(), "date", "report_date", "reportdate", "reporting_date");
+                    if (!isBlank(fromExtras)) {
+                        scenario.setReportDate(fromExtras);
+                    }
+                }
+                if (isBlank(scenario.getDateOfContact()) && !isBlank(scenario.getEncounterStart())) {
+                    scenario.setDateOfContact(scenario.getEncounterStart());
+                }
+                if (isEmptyRow(scenario)) continue;
+                if (isBlank(scenario.getKpiType()) && sheetName != null && !sheetName.isBlank()) {
+                    scenario.setKpiType(inferKpiTypeFromSheet(sheetName));
+                }
+                scenarios.add(scenario);
             }
             return scenarios;
         }
+    }
+
+    public static List<String> listSheetNames(File file) throws IOException {
+        try (FileInputStream fis = new FileInputStream(file);
+             XSSFWorkbook workbook = new XSSFWorkbook(fis)) {
+            List<String> names = new ArrayList<>();
+            for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+                names.add(workbook.getSheetAt(i).getSheetName());
+            }
+            return names;
+        }
+    }
+
+    public static String guessPreferredSheet(List<String> sheetNames) {
+        if (sheetNames == null || sheetNames.isEmpty()) return "";
+        for (String preferred : SHEET_NAMES) {
+            for (String actual : sheetNames) {
+                if (preferred.equalsIgnoreCase(actual)) {
+                    return actual;
+                }
+            }
+        }
+        return sheetNames.get(0);
     }
 
     private static boolean isEmptyRow(ScenarioTestCase scenario) {
@@ -76,7 +134,19 @@ public class ScenarioReader {
                 && isBlank(scenario.getPurposeOfContact())
                 && isBlank(scenario.getDateOfContact())
                 && isBlank(scenario.getAge())
-                && isBlank(scenario.getContactLogs());
+                && isBlank(scenario.getContactLogs())
+                && isBlank(scenario.getKpiType())
+                && isBlank(scenario.getTotalRegistrations())
+                && isBlank(scenario.getAttendedIndicator())
+                && isBlank(scenario.getEncounterStart())
+                && isBlank(scenario.getPatientBirthdate())
+                && isBlank(scenario.getReportingMonth())
+                && isBlank(scenario.getReportDate())
+                && isBlank(scenario.getSocialRiskFactorScore())
+                && isBlank(scenario.getBuddyingProgrammePeriodStart())
+                && isBlank(scenario.getBuddyingProgrammePeriodEnd())
+                && isBlank(scenario.getBefriendingProgrammePeriodStart())
+                && isBlank(scenario.getBefriendingProgrammePeriodEnd());
         boolean extrasEmpty = scenario.getExtraFields() == null || scenario.getExtraFields().isEmpty();
         return coreEmpty && extrasEmpty;
     }
@@ -87,6 +157,26 @@ public class ScenarioReader {
             if (sheet != null) return sheet;
         }
         return workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
+    }
+
+    private static Sheet findSheetByName(XSSFWorkbook workbook, String sheetName) {
+        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+            Sheet s = workbook.getSheetAt(i);
+            if (s.getSheetName().equalsIgnoreCase(sheetName)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    private static String inferKpiTypeFromSheet(String sheetName) {
+        if (sheetName == null) return "";
+        String lower = sheetName.toLowerCase(Locale.ENGLISH);
+        if (lower.contains("robust")) return "Robust";
+        if (lower.contains("frail")) return "Frail";
+        if (lower.contains("buddy")) return "Buddying";
+        if (lower.contains("befriend")) return "Befriending";
+        return "";
     }
 
     private static HeaderIndex buildHeaderIndex(Sheet sheet) {
@@ -124,6 +214,37 @@ public class ScenarioReader {
                     if (!value.isBlank()) {
                         usedColumns.add(entry.getValue());
                         return value;
+                    }
+                }
+            }
+        }
+        return "";
+    }
+
+    private static String getExactValue(Row row, HeaderIndex headerIndex, Set<Integer> usedColumns, String... keys) {
+        for (String key : keys) {
+            String normKey = normalize(key);
+            Integer idx = headerIndex.byKey.get(normKey);
+            if (idx == null) continue;
+            if (usedColumns.contains(idx)) continue;
+            String value = getString(row, idx);
+            if (!value.isBlank()) {
+                usedColumns.add(idx);
+                return value;
+            }
+        }
+        return "";
+    }
+
+    private static String firstExtraWithKey(Map<String, String> extras, String... keys) {
+        if (extras == null || extras.isEmpty()) return "";
+        for (String key : keys) {
+            String normKey = normalize(key);
+            for (Map.Entry<String, String> entry : extras.entrySet()) {
+                String entryNorm = normalize(entry.getKey());
+                if (entryNorm.equals(normKey) || entryNorm.contains(normKey) || normKey.contains(entryNorm)) {
+                    if (!entry.getValue().isBlank()) {
+                        return entry.getValue();
                     }
                 }
             }

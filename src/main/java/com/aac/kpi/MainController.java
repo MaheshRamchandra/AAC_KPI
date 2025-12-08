@@ -180,6 +180,28 @@ public class MainController {
         updateStatus();
     }
 
+    private File ensureFileName(File file) {
+        if (file == null) return null;
+        String name = file.getName();
+        if (!name.toLowerCase().endsWith(".xlsx")) {
+            return new File(file.getParentFile(), name + ".xlsx");
+        }
+        return file;
+    }
+
+    private String suggestedFileName() {
+        String kpiType = AppState.getScenarioSheetKpiType();
+        if (kpiType == null || kpiType.isBlank()) {
+            kpiType = AppState.getRegistrationOverrideType();
+        }
+        if (kpiType == null || kpiType.isBlank()) {
+            kpiType = "Robust";
+        }
+        String safeKpi = kpiType.replaceAll("[^A-Za-z0-9_-]", "");
+        String date = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_DATE);
+        return "KPI_" + safeKpi + "_" + date + ".xlsx";
+    }
+
     @FXML
     private void onUploadExcel() {
         Window owner = tabPane.getScene() != null ? tabPane.getScene().getWindow() : null;
@@ -226,15 +248,15 @@ public class MainController {
         try {
             FileChooser fc = new FileChooser();
             fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel", "*.xlsx"));
-            fc.setInitialFileName("KPI_Data.xlsx");
+            fc.setInitialFileName(suggestedFileName());
             File chosen = fc.showSaveDialog(tabPane.getScene().getWindow());
             if (chosen == null)
                 return;
             var regCfg = promptRegistrationConfig();
-            if (regCfg.isEmpty())
+            if (regCfg.isEmpty() && !AppState.isScenarioSkipPrompts())
                 return;
             var reporting = promptReportingFields();
-            if (reporting.isEmpty())
+            if (reporting.isEmpty() && !AppState.isScenarioSkipPrompts())
                 return;
             regCfg.ifPresent(this::applyRegistrationConfig);
             // Prompt for volunteer_attendance_report practitioner count
@@ -331,10 +353,10 @@ public class MainController {
                 return;
             }
             var regCfg = promptRegistrationConfig();
-            if (regCfg.isEmpty())
+            if (regCfg.isEmpty() && !AppState.isScenarioSkipPrompts())
                 return;
             var reporting = promptReportingFields();
-            if (reporting.isEmpty())
+            if (reporting.isEmpty() && !AppState.isScenarioSkipPrompts())
                 return;
             regCfg.ifPresent(this::applyRegistrationConfig);
             // Prompt for volunteer_attendance_report practitioner count
@@ -368,7 +390,7 @@ public class MainController {
             reporting.ifPresent(fields -> applyReportingFields(commons, fields));
             regCfg.ifPresent(this::applyRegistrationConfig);
             File file = ExcelWriter.saveToExcel(patients, sessions, practitioners, encounters, questionnaires, commons,
-                    dest);
+                    ensureFileName(dest));
             AppState.setDirty(false);
             new Alert(Alert.AlertType.INFORMATION, "Saved: " + file.getAbsolutePath(), ButtonType.OK).showAndWait();
             statusLabel.setText(String.format(
@@ -398,6 +420,9 @@ public class MainController {
     }
 
     private java.util.Optional<ReportingFieldsDialog.ReportingFields> promptReportingFields() {
+        if (AppState.isScenarioSkipPrompts()) {
+            return java.util.Optional.empty();
+        }
         return ReportingFieldsDialog.prompt(AppState.getReportingMonthOverride(), AppState.getReportDateOverride());
     }
 
@@ -414,6 +439,9 @@ public class MainController {
     }
 
     private java.util.Optional<KpiRegistrationDialog.RegistrationSelection> promptRegistrationConfig() {
+        if (AppState.isScenarioSkipPrompts()) {
+            return defaultRegistrationSelection();
+        }
         return KpiRegistrationDialog.prompt(
                 AppState.getRobustRegistrationCount(),
                 AppState.getFrailRegistrationCount(),
@@ -443,6 +471,17 @@ public class MainController {
         });
     }
 
+    private java.util.Optional<KpiRegistrationDialog.RegistrationSelection> defaultRegistrationSelection() {
+        var cfg = new KpiRegistrationDialog.RegistrationConfig(
+                AppState.getRobustRegistrationCount(),
+                AppState.getFrailRegistrationCount(),
+                AppState.getBuddingRegistrationCount(),
+                AppState.getBefriendingRegistrationCount()
+        );
+        return java.util.Optional.of(new KpiRegistrationDialog.RegistrationSelection(
+                AppState.getRegistrationOverrideType(), cfg));
+    }
+
     @FXML
     private void onExit() {
         statusLabel.getScene().getWindow().hide();
@@ -466,6 +505,10 @@ public class MainController {
         scenarios.clear();
         AppState.setCurrentExcelFile(null);
         AppState.setDirty(true);
+        AppState.setScenarioSkipPrompts(false);
+        AppState.clearSkipBuddyingDerive();
+        AppState.setScenarioSheetName("");
+        AppState.setScenarioSheetKpiType("");
         patientController.refreshTable();
         eventController.refreshTable();
         practitionerController.refreshTable();

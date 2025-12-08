@@ -18,6 +18,18 @@ public class ScenarioTestCase {
     private String age;
     private String remarks;
     private String contactLogs;
+    private String kpiType;
+    private String totalRegistrations;
+    private String attendedIndicator;
+    private String encounterStart;
+    private String patientBirthdate;
+    private String reportingMonth;
+    private String reportDate;
+    private String socialRiskFactorScore;
+    private String buddyingProgrammePeriodStart;
+    private String buddyingProgrammePeriodEnd;
+    private String befriendingProgrammePeriodStart;
+    private String befriendingProgrammePeriodEnd;
     private java.util.Map<String, String> extraFields = new java.util.LinkedHashMap<>();
     private java.util.List<ColumnOverride> columnOverrides = new java.util.ArrayList<>();
 
@@ -182,6 +194,102 @@ public class ScenarioTestCase {
 
     public void setContactLogs(String contactLogs) {
         this.contactLogs = contactLogs;
+    }
+
+    public String getKpiType() {
+        return kpiType;
+    }
+
+    public void setKpiType(String kpiType) {
+        this.kpiType = kpiType;
+    }
+
+    public String getTotalRegistrations() {
+        return totalRegistrations;
+    }
+
+    public void setTotalRegistrations(String totalRegistrations) {
+        this.totalRegistrations = totalRegistrations;
+    }
+
+    public String getAttendedIndicator() {
+        return attendedIndicator;
+    }
+
+    public void setAttendedIndicator(String attendedIndicator) {
+        this.attendedIndicator = attendedIndicator;
+    }
+
+    public String getEncounterStart() {
+        return encounterStart;
+    }
+
+    public void setEncounterStart(String encounterStart) {
+        this.encounterStart = encounterStart;
+    }
+
+    public String getPatientBirthdate() {
+        return patientBirthdate;
+    }
+
+    public void setPatientBirthdate(String patientBirthdate) {
+        this.patientBirthdate = patientBirthdate;
+    }
+
+    public String getReportingMonth() {
+        return reportingMonth;
+    }
+
+    public void setReportingMonth(String reportingMonth) {
+        this.reportingMonth = reportingMonth;
+    }
+
+    public String getReportDate() {
+        return reportDate;
+    }
+
+    public void setReportDate(String reportDate) {
+        this.reportDate = reportDate;
+    }
+
+    public String getSocialRiskFactorScore() {
+        return socialRiskFactorScore;
+    }
+
+    public void setSocialRiskFactorScore(String socialRiskFactorScore) {
+        this.socialRiskFactorScore = socialRiskFactorScore;
+    }
+
+    public String getBuddyingProgrammePeriodStart() {
+        return buddyingProgrammePeriodStart;
+    }
+
+    public void setBuddyingProgrammePeriodStart(String buddyingProgrammePeriodStart) {
+        this.buddyingProgrammePeriodStart = buddyingProgrammePeriodStart;
+    }
+
+    public String getBuddyingProgrammePeriodEnd() {
+        return buddyingProgrammePeriodEnd;
+    }
+
+    public void setBuddyingProgrammePeriodEnd(String buddyingProgrammePeriodEnd) {
+        this.buddyingProgrammePeriodEnd = buddyingProgrammePeriodEnd;
+    }
+
+    public String getBefriendingProgrammePeriodStart() {
+        return befriendingProgrammePeriodStart;
+    }
+
+    public void setBefriendingProgrammePeriodStart(String befriendingProgrammePeriodStart) {
+        this.befriendingProgrammePeriodStart = befriendingProgrammePeriodStart;
+    }
+
+    public String getBefriendingProgrammePeriodEnd() {
+        return befriendingProgrammePeriodEnd;
+    }
+
+    public void setBefriendingProgrammePeriodEnd(String befriendingProgrammePeriodEnd) {
+        this.befriendingProgrammePeriodEnd = befriendingProgrammePeriodEnd;
     }
 
     public java.util.Map<String, String> getExtraFields() {

@@ -1,6 +1,7 @@
 package com.aac.kpi.service;
 
 import com.aac.kpi.model.*;
+import com.aac.kpi.service.AppState;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -145,10 +146,6 @@ public final class CommonBuilderService {
             if (isBlank(r.getScreeningDeclarationDate())) r.setScreeningDeclarationDate("2025-12-31");
             if (isBlank(r.getBefriendingOptOutStatus())) r.setBefriendingOptOutStatus("TRUE");
             if (isBlank(r.getBuddyingOptOutStatus())) r.setBuddyingOptOutStatus("TRUE");
-            if (isBlank(r.getResidentBefriendingProgrammePeriodStart())) r.setResidentBefriendingProgrammePeriodStart("2025-04-01");
-            if (isBlank(r.getResidentBefriendingProgrammePeriodEnd())) r.setResidentBefriendingProgrammePeriodEnd("2026-03-31");
-            if (isBlank(r.getResidentBuddyingProgrammePeriodStart())) r.setResidentBuddyingProgrammePeriodStart("2025-04-01");
-            if (isBlank(r.getResidentBuddyingProgrammePeriodEnd())) r.setResidentBuddyingProgrammePeriodEnd("2026-03-31");
             if (isBlank(r.getIrmsReferralRaisedDate())) r.setIrmsReferralRaisedDate("2025-04-01");
             if (isBlank(r.getIrmsReferralAcceptedDate())) r.setIrmsReferralAcceptedDate("2025-04-01");
             if (isBlank(r.getAsgReferralRaisedBy())) r.setAsgReferralRaisedBy("Mr Staff A");
@@ -184,12 +181,14 @@ public final class CommonBuilderService {
             if (minStart != null) {
                 String d = minStart.toLocalDate().format(D_ONLY);
                 if (isBlank(r.getResidentBefriendingProgrammePeriodStart())) r.setResidentBefriendingProgrammePeriodStart(d);
-                if (isBlank(r.getResidentBuddyingProgrammePeriodStart())) r.setResidentBuddyingProgrammePeriodStart(d);
+                if (isBlank(r.getResidentBuddyingProgrammePeriodStart()) && !AppState.shouldSkipBuddyingDerive(p.getPatientId()))
+                    r.setResidentBuddyingProgrammePeriodStart(d);
             }
             if (maxEnd != null) {
                 String d = maxEnd.toLocalDate().format(D_ONLY);
                 if (isBlank(r.getResidentBefriendingProgrammePeriodEnd())) r.setResidentBefriendingProgrammePeriodEnd(d);
-                if (isBlank(r.getResidentBuddyingProgrammePeriodEnd())) r.setResidentBuddyingProgrammePeriodEnd(d);
+                if (isBlank(r.getResidentBuddyingProgrammePeriodEnd()) && !AppState.shouldSkipBuddyingDerive(p.getPatientId()))
+                    r.setResidentBuddyingProgrammePeriodEnd(d);
             }
 
             // 'date' column in resident_report = latest activity (use latest attended session end)

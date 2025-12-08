@@ -80,16 +80,28 @@
     <center>
         <TableView fx:id="table" prefHeight="360.0">
             <columns>
+                <TableColumn fx:id="cKpi" text="KPI" prefWidth="120" />
                 <TableColumn fx:id="cSeniors" text="Number of seniors" prefWidth="140" />
                 <TableColumn fx:id="cCfs" text="CFS" prefWidth="80" />
                 <TableColumn fx:id="cMode" text="Mode of event" prefWidth="120" />
                 <TableColumn fx:id="cAapDate" text="AAP Session Date" prefWidth="120" />
                 <TableColumn fx:id="cAapAttendance" text="AAP Attendance" prefWidth="120" />
+                <TableColumn fx:id="cIsAttended" text="Is Attended" prefWidth="120" />
+                <TableColumn fx:id="cTotalRegistration" text="Total registration" prefWidth="140" />
                 <TableColumn fx:id="cContactLogs" text="Contact logs" prefWidth="120" />
                 <TableColumn fx:id="cBoundary" text="Boundary" prefWidth="140" />
                 <TableColumn fx:id="cPurpose" text="Purpose of contact" prefWidth="180" />
                 <TableColumn fx:id="cContactDate" text="Date of contact" prefWidth="120" />
+                <TableColumn fx:id="cEncounterStart" text="Encounter start" prefWidth="140" />
                 <TableColumn fx:id="cAge" text="Age" prefWidth="80" />
+                <TableColumn fx:id="cPatientBirthdate" text="Patient birthdate" prefWidth="150" />
+                <TableColumn fx:id="cReportingMonth" text="Reporting month" prefWidth="150" />
+                <TableColumn fx:id="cReportDate" text="Date" prefWidth="120" />
+                <TableColumn fx:id="cSocialRisk" text="Social risk score" prefWidth="140" />
+                <TableColumn fx:id="cBuddyStart" text="Buddying period start" prefWidth="160" />
+                <TableColumn fx:id="cBuddyEnd" text="Buddying period end" prefWidth="160" />
+                <TableColumn fx:id="cBefriendingStart" text="Befriending period start" prefWidth="180" />
+                <TableColumn fx:id="cBefriendingEnd" text="Befriending period end" prefWidth="180" />
                 <TableColumn fx:id="cRemarks" text="Remarks / Others" prefWidth="200" />
                 <TableColumn fx:id="cOverrides" text="Column overrides" prefWidth="260" />
             </columns>
