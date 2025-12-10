@@ -1,8 +1,9 @@
 package com.aac.kpi.controller;
 
 import com.aac.kpi.model.ScenarioTestCase;
-import com.aac.kpi.service.ScenarioReader;
 import com.aac.kpi.service.AppState;
+import com.aac.kpi.service.ScenarioReader;
+import com.aac.kpi.service.ScenarioWriter;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -20,8 +21,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.StringJoiner;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -75,6 +76,8 @@ public class ScenarioBuilderController {
     private Runnable generateExcelHandler;
     // Global column overrides (apply to every scenario row)
     private final List<ScenarioTestCase.ColumnOverride> globalOverrides = new java.util.ArrayList<>();
+    private File lastScenarioFile;
+    private String lastScenarioSheetName = "";
 
     @FXML
     private void initialize() {
@@ -307,6 +310,7 @@ public class ScenarioBuilderController {
         try {
             String sheetToRead = null;
             List<String> sheets = ScenarioReader.listSheetNames(file);
+            boolean singleSheet = sheets.size() == 1;
             if (sheets.size() > 1) {
                 String preferred = ScenarioReader.guessPreferredSheet(sheets);
                 ChoiceDialog<String> dialog = new ChoiceDialog<>(preferred, sheets);
@@ -329,8 +333,14 @@ public class ScenarioBuilderController {
                 showAlert(Alert.AlertType.INFORMATION, "Loaded", loaded.size() + " scenario(s) imported" + sheetMsg + ".");
                 AppState.setScenarioSkipPrompts(true);
                 AppState.setScenarioSheetName(sheetToRead == null ? "" : sheetToRead);
-                AppState.setScenarioSheetKpiType(kpiTypeFromSheet(sheetToRead));
+                String kpiType = kpiTypeFromSheet(sheetToRead);
+                if (singleSheet && (kpiType == null || kpiType.isBlank())) {
+                    kpiType = sheetToRead == null ? "" : sheetToRead;
+                }
+                AppState.setScenarioSheetKpiType(kpiType);
                 applyReportingMonthFromScenarios(loaded);
+                lastScenarioFile = file;
+                lastScenarioSheetName = sheetToRead == null ? "" : sheetToRead;
             }
         } catch (IOException ex) {
             showAlert(Alert.AlertType.ERROR, "Failed to load scenarios", ex.getMessage());
@@ -503,6 +513,93 @@ public class ScenarioBuilderController {
         } else {
             showAlert(Alert.AlertType.INFORMATION, "Generate Excel",
                     "Scenario Builder is not yet wired to the Excel generator. Please use the File → Save / Save As menu for now.");
+        }
+    }
+
+    @FXML
+    private void onSaveScenarioExcel() {
+        saveScenarios(false);
+    }
+
+    @FXML
+    private void onSaveScenarioExcelAs() {
+        saveScenarios(true);
+    }
+
+    private void saveScenarios(boolean forcePrompt) {
+        if (scenarios == null) {
+            showAlert(Alert.AlertType.INFORMATION, "No scenarios", "There are no scenario rows to save yet.");
+            return;
+        }
+        finishActiveEdit();
+        File target = forcePrompt ? null : lastScenarioFile;
+        if (target == null) {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Save Scenario Excel");
+            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel", "*.xlsx"));
+            chooser.setInitialFileName(defaultScenarioFileName());
+            target = chooser.showSaveDialog(table.getScene() != null ? table.getScene().getWindow() : null);
+        }
+        if (target == null) return;
+
+        String sheetName = resolveScenarioSheetName();
+        try {
+            File saved = ScenarioWriter.write(target, new java.util.ArrayList<>(scenarios), sheetName);
+            lastScenarioFile = saved;
+            lastScenarioSheetName = sheetName;
+            AppState.setScenarioSheetName(sheetName);
+            reloadFromDisk(saved, sheetName);
+            showAlert(Alert.AlertType.INFORMATION, "Saved",
+                    "Scenarios saved to " + saved.getAbsolutePath() + " (sheet \"" + sheetName + "\").");
+        } catch (Exception ex) {
+            showAlert(Alert.AlertType.ERROR, "Failed to save scenarios", ex.getMessage());
+        }
+    }
+
+    private String defaultScenarioFileName() {
+        if (lastScenarioFile != null) {
+            String name = lastScenarioFile.getName();
+            if (name != null && !name.isBlank()) {
+                return name.toLowerCase(Locale.ENGLISH).endsWith(".xlsx") ? name : name + ".xlsx";
+            }
+        }
+        String base = AppState.getScenarioSheetName();
+        if (base == null || base.isBlank()) base = "Scenarios";
+        if (!base.toLowerCase(Locale.ENGLISH).endsWith(".xlsx")) {
+            base = base + ".xlsx";
+        }
+        return base;
+    }
+
+    private String resolveScenarioSheetName() {
+        if (lastScenarioSheetName != null && !lastScenarioSheetName.isBlank()) {
+            return lastScenarioSheetName;
+        }
+        String fromState = AppState.getScenarioSheetName();
+        if (fromState != null && !fromState.isBlank()) {
+            return fromState;
+        }
+        return "Scenarios";
+    }
+
+    private void finishActiveEdit() {
+        if (table == null) return;
+        if (table.getEditingCell() != null) {
+            table.edit(-1, null); // end any in-progress edit so values are committed
+        }
+    }
+
+    private void reloadFromDisk(File file, String sheetName) {
+        if (file == null || !file.exists()) return;
+        try {
+            List<ScenarioTestCase> persisted = ScenarioReader.readScenarios(file, sheetName);
+            if (persisted != null && !persisted.isEmpty()) {
+                scenarios.setAll(persisted);
+                applyGlobalOverridesToScenarios(true);
+                updateSummary();
+            }
+        } catch (IOException ignored) {
+            // Best-effort; keep in-memory scenarios if reload fails
         }
     }
 

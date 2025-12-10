@@ -67,6 +67,8 @@
                 <HBox spacing="10">
                     <children>
                         <Button text="Load from Excel" onAction="#onLoadFromExcel" />
+                        <Button text="Save Excel" onAction="#onSaveScenarioExcel" />
+                        <Button text="Save Excel As" onAction="#onSaveScenarioExcelAs" />
                         <Button text="Add Scenario" onAction="#onAddScenario" />
                         <Button text="Add Column" onAction="#onAddColumnOverride" />
                         <Button text="Remove Column" onAction="#onRemoveColumnOverride" />
