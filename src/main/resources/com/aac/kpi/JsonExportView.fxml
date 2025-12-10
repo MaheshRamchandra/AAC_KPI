@@ -25,33 +25,38 @@
                 <RowConstraints />
                 <RowConstraints />
                 <RowConstraints />
+                <RowConstraints />
             </rowConstraints>
 
-            <Label text="Excel file:" GridPane.rowIndex="0" GridPane.columnIndex="0" />
-            <TextField fx:id="excelPathField" GridPane.rowIndex="0" GridPane.columnIndex="1" />
-            <Button fx:id="excelBrowseButton" text="Browse…" onAction="#onBrowseExcel" GridPane.rowIndex="0" GridPane.columnIndex="2" />
+            <Label text="Converter JAR:" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+            <TextField fx:id="jarPathField" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+            <Button fx:id="jarBrowseButton" text="Browse…" onAction="#onBrowseJar" GridPane.rowIndex="0" GridPane.columnIndex="2" />
 
-            <Label text="Output folder:" GridPane.rowIndex="1" GridPane.columnIndex="0" />
-            <TextField fx:id="outputFolderField" GridPane.rowIndex="1" GridPane.columnIndex="1" />
-            <Button fx:id="outputBrowseButton" text="Choose…" onAction="#onBrowseOutput" GridPane.rowIndex="1" GridPane.columnIndex="2" />
+            <Label text="Excel file:" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+            <TextField fx:id="excelPathField" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+            <Button fx:id="excelBrowseButton" text="Browse…" onAction="#onBrowseExcel" GridPane.rowIndex="1" GridPane.columnIndex="2" />
 
-            <Label text="AAC count:" GridPane.rowIndex="2" GridPane.columnIndex="0" />
-            <TextField fx:id="aacCountField" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+            <Label text="Output folder:" GridPane.rowIndex="2" GridPane.columnIndex="0" />
+            <TextField fx:id="outputFolderField" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+            <Button fx:id="outputBrowseButton" text="Choose…" onAction="#onBrowseOutput" GridPane.rowIndex="2" GridPane.columnIndex="2" />
 
-            <Label text="Resident count:" GridPane.rowIndex="3" GridPane.columnIndex="0" />
-            <TextField fx:id="residentCountField" GridPane.rowIndex="3" GridPane.columnIndex="1" />
+            <Label text="AAC count:" GridPane.rowIndex="3" GridPane.columnIndex="0" />
+            <TextField fx:id="aacCountField" GridPane.rowIndex="3" GridPane.columnIndex="1" />
 
-            <Label text="Volunteer report count:" GridPane.rowIndex="4" GridPane.columnIndex="0" />
-            <TextField fx:id="volunteerCountField" GridPane.rowIndex="4" GridPane.columnIndex="1" />
+            <Label text="Resident count:" GridPane.rowIndex="4" GridPane.columnIndex="0" />
+            <TextField fx:id="residentCountField" GridPane.rowIndex="4" GridPane.columnIndex="1" />
 
-            <Label text="Event count:" GridPane.rowIndex="5" GridPane.columnIndex="0" />
-            <TextField fx:id="eventCountField" GridPane.rowIndex="5" GridPane.columnIndex="1" />
+            <Label text="Volunteer report count:" GridPane.rowIndex="5" GridPane.columnIndex="0" />
+            <TextField fx:id="volunteerCountField" GridPane.rowIndex="5" GridPane.columnIndex="1" />
 
-            <Label text="Organization count:" GridPane.rowIndex="6" GridPane.columnIndex="0" />
-            <TextField fx:id="organizationCountField" GridPane.rowIndex="6" GridPane.columnIndex="1" />
+            <Label text="Event count:" GridPane.rowIndex="6" GridPane.columnIndex="0" />
+            <TextField fx:id="eventCountField" GridPane.rowIndex="6" GridPane.columnIndex="1" />
 
-            <Label text="Location count:" GridPane.rowIndex="7" GridPane.columnIndex="0" />
-            <TextField fx:id="locationCountField" GridPane.rowIndex="7" GridPane.columnIndex="1" />
+            <Label text="Organization count:" GridPane.rowIndex="7" GridPane.columnIndex="0" />
+            <TextField fx:id="organizationCountField" GridPane.rowIndex="7" GridPane.columnIndex="1" />
+
+            <Label text="Location count:" GridPane.rowIndex="8" GridPane.columnIndex="0" />
+            <TextField fx:id="locationCountField" GridPane.rowIndex="8" GridPane.columnIndex="1" />
         </GridPane>
 
         <HBox spacing="8">

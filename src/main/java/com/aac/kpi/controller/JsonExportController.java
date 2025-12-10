@@ -28,6 +28,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 
 public class JsonExportController {
+    @FXML private TextField jarPathField;
+    @FXML private Button jarBrowseButton;
     @FXML private TextField excelPathField;
     @FXML private Button excelBrowseButton;
     @FXML private TextField outputFolderField;
@@ -55,6 +57,7 @@ public class JsonExportController {
     private ObservableList<CommonRow> commonRows;
 
     private final FileChooser excelChooser = new FileChooser();
+    private final FileChooser jarChooser = new FileChooser();
     private final DirectoryChooser directoryChooser = new DirectoryChooser();
 
     public void init(ObservableList<Patient> patients,
@@ -72,6 +75,8 @@ public class JsonExportController {
         directoryChooser.setTitle("Select output folder");
         excelChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel Files", "*.xlsx", "*.xls"));
         excelChooser.setTitle("Select KPI Excel");
+        jarChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JAR Files", "*.jar"));
+        jarChooser.setTitle("Select converter JAR");
         updateCountsFromData();
     }
 
@@ -81,6 +86,7 @@ public class JsonExportController {
         logArea.setWrapText(true);
         statusLabel.setText("Ready to export KPI JSON");
         setDefaultCounts();
+        setDefaultJarPath();
     }
 
     public void setExcelPath(File file) {
@@ -94,6 +100,14 @@ public class JsonExportController {
         File file = excelChooser.showOpenDialog(excelPathField.getScene().getWindow());
         if (file != null) {
             excelPathField.setText(file.getAbsolutePath());
+        }
+    }
+
+    @FXML
+    private void onBrowseJar() {
+        File file = jarChooser.showOpenDialog(jarPathField.getScene().getWindow());
+        if (file != null) {
+            jarPathField.setText(file.getAbsolutePath());
         }
     }
 
@@ -129,6 +143,7 @@ public class JsonExportController {
         try {
             File excel = requireFile(excelPathField.getText(), "Excel input file");
             File outputFolder = requireDirectory(outputFolderField.getText(), "Output folder");
+            File jarFile = requireFile(jarPathField.getText(), "Converter JAR");
 
             int aacCount = parseCountField(aacCountField.getText(), "AAC count");
             int residentCount = parseCountField(residentCountField.getText(), "Resident count");
@@ -144,10 +159,12 @@ public class JsonExportController {
                 return;
             }
 
+            AppState.setJsonConverterJarPath(jarFile.getAbsolutePath());
+
             Task<JsonExportService.Result> task = new Task<>() {
                 @Override
                 protected JsonExportService.Result call() throws Exception {
-                    updateMessage("Running embedded JSON converter…");
+                    updateMessage("Running JSON converter…");
                     JsonExportService.Result result = JsonExportService.run(
                             excel,
                             outputFolder,
@@ -248,6 +265,13 @@ public class JsonExportController {
         if (eventCountField != null && eventCountField.getText().isBlank()) eventCountField.setText("1404");
         if (organizationCountField != null && organizationCountField.getText().isBlank()) organizationCountField.setText("5");
         if (locationCountField != null && locationCountField.getText().isBlank()) locationCountField.setText("6");
+    }
+
+    private void setDefaultJarPath() {
+        String path = AppState.getJsonConverterJarPath();
+        if (jarPathField != null && (jarPathField.getText() == null || jarPathField.getText().isBlank())) {
+            jarPathField.setText(path == null ? "" : path);
+        }
     }
 
     private void fillCountsFromExcelFile(File excel) throws IOException {

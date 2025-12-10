@@ -1,11 +1,15 @@
 package com.aac.kpi.service;
 
-import com.aac.kpi.converter.ReportConfig;
 import com.aac.kpi.converter.ReportCounts;
-import com.aac.kpi.converter.ReportRunner;
 import org.apache.poi.openxml4j.util.ZipSecureFile;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 public final class JsonExportService {
     private JsonExportService() {}
@@ -31,7 +35,7 @@ public final class JsonExportService {
     }
 
     /**
-     * Runs the embedded KPI-to-JSON converter directly (no external JAR).
+     * Runs the external KPI-to-JSON converter JAR using the provided inputs.
      */
     public static Result run(File excel,
                              File outputFolder,
@@ -42,26 +46,36 @@ public final class JsonExportService {
                              int organizationCount,
                              int locationCount) {
         ZipSecureFile.setMinInflateRatio(Double.parseDouble(MIN_INFLATE_RATIO));
-        String command = "embedded: ReportRunner.generateReports";
+        File jarFile = resolveJarFile(AppState.getJsonConverterJarPath());
+        if (jarFile == null || !jarFile.isFile()) {
+            String msg = "Converter JAR not found at " + AppState.getJsonConverterJarPath();
+            return new Result(1, msg, msg);
+        }
+
+        List<String> cmd = new ArrayList<>();
+        cmd.add(resolveJavaExecutable());
+        cmd.add("-jar");
+        cmd.add(jarFile.getAbsolutePath());
+        cmd.add(excel.getAbsolutePath());
+        cmd.add(outputFolder.getAbsolutePath());
+        cmd.add(String.valueOf(aacCount));
+        cmd.add(String.valueOf(residentCount));
+        cmd.add(String.valueOf(volunteerCount));
+        cmd.add(String.valueOf(eventCount));
+        cmd.add(String.valueOf(organizationCount));
+        cmd.add(String.valueOf(locationCount));
+
+        String commandString = toCommandString(cmd);
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        pb.redirectErrorStream(true);
         try {
-            ReportRunner runner = new ReportRunner();
-            ReportConfig config = new ReportConfig(
-                    excel.getAbsolutePath(),
-                    outputFolder.getAbsolutePath(),
-                    aacCount,
-                    residentCount,
-                    volunteerCount,
-                    eventCount,
-                    organizationCount,
-                    locationCount
-            );
-            runner.generateReports(config);
-            return new Result(0,
-                    "Reports generated to " + outputFolder.getAbsolutePath(),
-                    command);
+            Process proc = pb.start();
+            String output = readProcessOutput(proc);
+            int exit = proc.waitFor();
+            return new Result(exit, output, commandString);
         } catch (Exception ex) {
             String message = ex.getMessage() == null ? ex.toString() : ex.getMessage();
-            return new Result(1, message, command);
+            return new Result(1, message, commandString);
         }
     }
 
@@ -76,5 +90,62 @@ public final class JsonExportService {
         } catch (Exception ex) {
             return null;
         }
+    }
+
+    private static File resolveJarFile(String path) {
+        if (path == null || path.isBlank()) return null;
+        File jar = new File(path);
+        if (!jar.isAbsolute()) {
+            String cwd = System.getProperty("user.dir");
+            jar = new File(cwd, path);
+        }
+        return jar;
+    }
+
+    private static String resolveJavaExecutable() {
+        String javaHome = System.getProperty("java.home");
+        File javaBin = new File(javaHome, "bin/java");
+        if (File.separatorChar == '\\') {
+            File exe = new File(javaHome, "bin/java.exe");
+            if (exe.isFile()) {
+                return exe.getAbsolutePath();
+            }
+        }
+        if (javaBin.isFile()) {
+            return javaBin.getAbsolutePath();
+        }
+        return "java";
+    }
+
+    private static String readProcessOutput(Process proc) {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append(System.lineSeparator());
+            }
+            return sb.toString();
+        } catch (Exception ex) {
+            String message = ex.getMessage() == null ? ex.toString() : ex.getMessage();
+            return "Failed to read process output: " + message;
+        }
+    }
+
+    private static String toCommandString(List<String> parts) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < parts.size(); i++) {
+            if (i > 0) sb.append(' ');
+            sb.append(quoteArg(parts.get(i)));
+        }
+        return sb.toString();
+    }
+
+    private static String quoteArg(String value) {
+        Objects.requireNonNull(value);
+        if (value.contains(" ") || value.contains("\t")) {
+            return "\"" + value + "\"";
+        }
+        return value;
     }
 }
