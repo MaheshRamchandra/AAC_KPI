@@ -93,11 +93,12 @@ public final class ScenarioGenerationService {
         List<MasterDataService.AacCenter> centers = masterData.getAacCenters();
         for (int idx = 0; idx < scenarios.size(); idx++) {
             ScenarioTestCase scenario = scenarios.get(idx);
+            int colorIndex = idx;
             MasterDataService.AacCenter center = centers.isEmpty()
                     ? null
                     : centers.get(idx % centers.size());
             generateForScenario(scenario, patients, sessions, encounters, questionnaires, practitioners,
-                    masterData, aacPostalCodes, allPostalCodes, center, patientScenarioLookup);
+                    masterData, aacPostalCodes, allPostalCodes, center, patientScenarioLookup, colorIndex, idx);
         }
 
         // Build Common rows from the aggregated lists; Common rows stay
@@ -121,7 +122,9 @@ public final class ScenarioGenerationService {
                                             Map<String, Set<String>> aacPostalCodes,
                                             Set<String> allPostalCodes,
                                             MasterDataService.AacCenter selectedCenter,
-                                            Map<String, ScenarioTestCase> patientScenarioLookup) {
+                                            Map<String, ScenarioTestCase> patientScenarioLookup,
+                                            int colorIndex,
+                                            int scenarioOrder) {
         if (scenario == null) return;
         int numberOfSeniors = parsePositiveInt(scenario.getNumberOfSeniors(), 0);
         int totalRegistrations = parsePositiveInt(scenario.getTotalRegistrations(), 0);
@@ -242,8 +245,14 @@ public final class ScenarioGenerationService {
             applyPatientOverrides(p, overrides);
             scenarioPatients.add(p);
             patients.add(p);
-            if (i == 0) {
-                AppState.addHighlightedPatientId(patientId);
+            AppState.addHighlightedPatientId(patientId, colorIndex);
+            AppState.setScenarioOrder(patientId, scenarioOrder);
+            String pidIdent = nvl(p.getPatientIdentifierValue());
+            if (!pidIdent.isBlank()) {
+                AppState.addHighlightedPatientId(StringUtils.sanitizeAlphaNum(pidIdent), colorIndex);
+                AppState.addHighlightedPatientId(pidIdent, colorIndex);
+                AppState.setScenarioOrder(StringUtils.sanitizeAlphaNum(pidIdent), scenarioOrder);
+                AppState.setScenarioOrder(pidIdent, scenarioOrder);
             }
             if (patientScenarioLookup != null) {
                 patientScenarioLookup.put(patientId, scenario);
@@ -251,7 +260,6 @@ public final class ScenarioGenerationService {
             if (registrationValues != null && !registrationValues.isEmpty()) {
                 AppState.putScenarioRegistrationValues(patientId, registrationValues);
                 AppState.putScenarioRegistrationValues(StringUtils.sanitizeAlphaNum(patientId), registrationValues);
-                String pidIdent = nvl(p.getPatientIdentifierValue());
                 if (!pidIdent.isBlank()) {
                     AppState.putScenarioRegistrationValues(pidIdent, registrationValues);
                     AppState.putScenarioRegistrationValues(StringUtils.sanitizeAlphaNum(pidIdent), registrationValues);
@@ -269,9 +277,8 @@ public final class ScenarioGenerationService {
             pr.setPractitionerVolunteerAge(RandomDataUtil.randomInt(25, 65));
             pr.setWorkingRemarks("Generated from Scenario Builder");
             practitioners.add(pr);
-            if (i == 0) {
-                AppState.addHighlightedPractitionerId(prId);
-            }
+            AppState.addHighlightedPractitionerId(prId, colorIndex);
+            AppState.setScenarioOrder(prId, scenarioOrder);
         }
 
         if (aapAttendanceCount > 0) {
@@ -279,16 +286,34 @@ public final class ScenarioGenerationService {
                     scenarioPatients, aapAttendanceCount, modeOfEvent,
                     aapRaw, aapDate != null ? aapDate : baseDate, purpose, overrides, attendanceFlags);
             sessions.addAll(scenarioSessions);
+            for (EventSession s : scenarioSessions) {
+                if (s != null && s.getCompositionId() != null) {
+                    AppState.addHighlightedEventSessionCompositionId(StringUtils.sanitizeAlphaNum(s.getCompositionId()), colorIndex);
+                    AppState.setScenarioOrder(StringUtils.sanitizeAlphaNum(s.getCompositionId()), scenarioOrder);
+                }
+            }
         }
 
         List<Encounter> scenarioEncounters = generateEncountersForScenario(
                 scenarioPatients, contactDate != null ? contactDate : baseDate, purpose, contactLogCount,
                 scenario.getEncounterStart(), overrides);
         encounters.addAll(scenarioEncounters);
+        for (Encounter e : scenarioEncounters) {
+            if (e != null && e.getEncounterId() != null) {
+                AppState.addHighlightedEncounterId(e.getEncounterId(), colorIndex);
+                AppState.setScenarioOrder(e.getEncounterId(), scenarioOrder);
+            }
+        }
 
         List<QuestionnaireResponse> scenarioQuestionnaires = generateQuestionnairesForScenario(
                 scenarioPatients, baseDate, overrides);
         questionnaires.addAll(scenarioQuestionnaires);
+        for (QuestionnaireResponse qr : scenarioQuestionnaires) {
+            if (qr != null && qr.getQuestionnaireId() != null) {
+                AppState.addHighlightedQuestionnaireId(qr.getQuestionnaireId(), colorIndex);
+                AppState.setScenarioOrder(qr.getQuestionnaireId(), scenarioOrder);
+            }
+        }
     }
 
     private static List<EventSession> generateEventSessionsForScenario(List<Patient> patients,

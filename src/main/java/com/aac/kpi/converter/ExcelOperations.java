@@ -1,5 +1,6 @@
 package com.aac.kpi.converter;
 
+import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -19,6 +20,11 @@ import static com.aac.kpi.converter.ReportConstants.*;
 public class ExcelOperations {
     private String filePath;
     private Workbook workbook;
+
+    static {
+        // Allow slightly denser compression to avoid false zip-bomb hits on style-heavy workbooks.
+        ZipSecureFile.setMinInflateRatio(0.005);
+    }
 
     public ExcelOperations(String filePath) {
         this.filePath = filePath;

@@ -135,7 +135,8 @@ public class JsonCsvController {
         }
         String timestamp = NAME_FMT.format(LocalDateTime.now());
         String sanitizedName = folder.getFileName().toString().replaceAll("[^A-Za-z0-9._-]", "_");
-        String fileName = String.format("hsar_%s_%s_%d.csv", sanitizedName, timestamp, System.currentTimeMillis());
+        String filePrefix = resolveFilePrefix(folder.getFileName().toString(), sanitizedName);
+        String fileName = String.format("%s_%s_%d.csv", filePrefix, timestamp, System.currentTimeMillis());
         Path csv = output.resolve(fileName);
         try (BufferedWriter writer = Files.newBufferedWriter(csv)) {
             writer.write("AAC_ID,Raw_Resource\n");
@@ -154,6 +155,19 @@ public class JsonCsvController {
             fixMisbehavedAacCsv(csv);
         }
         log("Generated " + csv.getFileName());
+    }
+
+    private String resolveFilePrefix(String folderName, String sanitizedFallback) {
+        String lower = folderName.toLowerCase(Locale.ROOT);
+        return switch (lower) {
+            case "aac_report", "aac_reports" -> "hsar_aac_report";
+            case "event_report", "event_reports" -> "hsar_event_report";
+            case "location_report", "location_reports" -> "hsar_location";
+            case "organization_report", "organisation_report", "organization_reports", "organisation_reports" -> "hsar_organization";
+            case "resident_report", "resident_reports" -> "hsar_resident_report";
+            case "volunteer_attendance_report", "volunteer_attendance_reports" -> "hsar_volunteer_attendance_report";
+            default -> "hsar_" + sanitizedFallback;
+        };
     }
 
     private Optional<String> findAacId(JsonElement element) {

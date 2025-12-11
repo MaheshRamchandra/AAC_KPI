@@ -40,6 +40,9 @@ public final class AppState {
     private static final Set<String> highlightedPractitionerIds = new LinkedHashSet<>();
     private static final Set<String> highlightedEncounterIds = new LinkedHashSet<>();
     private static final Set<String> highlightedQuestionnaireIds = new LinkedHashSet<>();
+    // Track per-id highlight color index so all rows from the same scenario share a color
+    private static final Map<String, Integer> highlightColorById = new HashMap<>();
+    private static final Map<String, Integer> scenarioOrderById = new HashMap<>();
 
     private AppState() {}
 
@@ -139,38 +142,77 @@ public final class AppState {
     public static void setScenarioSheetKpiType(String kpiType) { scenarioSheetKpiType = kpiType == null ? "" : kpiType; }
 
     public static Set<String> getHighlightedPatientIds() { return Collections.unmodifiableSet(highlightedPatientIds); }
-    public static void addHighlightedPatientId(String id) {
-        if (id != null && !id.isBlank()) highlightedPatientIds.add(id);
+    public static void addHighlightedPatientId(String id) { addHighlightedPatientId(id, 0); }
+    public static void addHighlightedPatientId(String id, int colorIndex) {
+        if (id != null && !id.isBlank()) {
+            highlightedPatientIds.add(id);
+            highlightColorById.put(id, colorIndex);
+        }
     }
-    public static void clearHighlightedPatientIds() { highlightedPatientIds.clear(); }
+    public static void clearHighlightedPatientIds() {
+        highlightedPatientIds.clear();
+        highlightColorById.clear();
+        scenarioOrderById.clear();
+    }
 
     public static Set<String> getHighlightedEventSessionCompositionIds() {
         return Collections.unmodifiableSet(highlightedEventSessionCompositionIds);
     }
-    public static void addHighlightedEventSessionCompositionId(String id) {
-        if (id != null && !id.isBlank()) highlightedEventSessionCompositionIds.add(id);
+    public static void addHighlightedEventSessionCompositionId(String id) { addHighlightedEventSessionCompositionId(id, 0); }
+    public static void addHighlightedEventSessionCompositionId(String id, int colorIndex) {
+        if (id != null && !id.isBlank()) {
+            highlightedEventSessionCompositionIds.add(id);
+            highlightColorById.put(id, colorIndex);
+        }
     }
     public static void clearHighlightedEventSessionCompositionIds() { highlightedEventSessionCompositionIds.clear(); }
 
     public static Set<String> getHighlightedPractitionerIds() { return Collections.unmodifiableSet(highlightedPractitionerIds); }
-    public static void addHighlightedPractitionerId(String id) {
-        if (id != null && !id.isBlank()) highlightedPractitionerIds.add(id);
+    public static void addHighlightedPractitionerId(String id) { addHighlightedPractitionerId(id, 0); }
+    public static void addHighlightedPractitionerId(String id, int colorIndex) {
+        if (id != null && !id.isBlank()) {
+            highlightedPractitionerIds.add(id);
+            highlightColorById.put(id, colorIndex);
+        }
     }
     public static void clearHighlightedPractitionerIds() { highlightedPractitionerIds.clear(); }
 
     public static Set<String> getHighlightedEncounterIds() { return Collections.unmodifiableSet(highlightedEncounterIds); }
-    public static void addHighlightedEncounterId(String id) {
-        if (id != null && !id.isBlank()) highlightedEncounterIds.add(id);
+    public static void addHighlightedEncounterId(String id) { addHighlightedEncounterId(id, 0); }
+    public static void addHighlightedEncounterId(String id, int colorIndex) {
+        if (id != null && !id.isBlank()) {
+            highlightedEncounterIds.add(id);
+            highlightColorById.put(id, colorIndex);
+        }
     }
     public static void clearHighlightedEncounterIds() { highlightedEncounterIds.clear(); }
 
     public static Set<String> getHighlightedQuestionnaireIds() {
         return Collections.unmodifiableSet(highlightedQuestionnaireIds);
     }
-    public static void addHighlightedQuestionnaireId(String id) {
-        if (id != null && !id.isBlank()) highlightedQuestionnaireIds.add(id);
+    public static void addHighlightedQuestionnaireId(String id) { addHighlightedQuestionnaireId(id, 0); }
+    public static void addHighlightedQuestionnaireId(String id, int colorIndex) {
+        if (id != null && !id.isBlank()) {
+            highlightedQuestionnaireIds.add(id);
+            highlightColorById.put(id, colorIndex);
+        }
     }
     public static void clearHighlightedQuestionnaireIds() { highlightedQuestionnaireIds.clear(); }
+
+    public static Integer getHighlightColorIndex(String id) {
+        if (id == null || id.isBlank()) return null;
+        return highlightColorById.get(id);
+    }
+
+    public static void setScenarioOrder(String id, int order) {
+        if (id == null || id.isBlank()) return;
+        scenarioOrderById.put(id, order);
+    }
+
+    public static Integer getScenarioOrder(String id) {
+        if (id == null || id.isBlank()) return null;
+        return scenarioOrderById.get(id);
+    }
 
     public static com.aac.kpi.model.RulesConfig getRulesConfig() { return rulesConfig; }
     public static void setRulesConfig(com.aac.kpi.model.RulesConfig cfg) {
